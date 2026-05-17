@@ -1,0 +1,11 @@
+rank,name,norm
+1,rule.id,0.8174
+2,cluster_fp_rate,0.067
+3,level,0.0453
+4,occurrenceCount,0.0251
+5,rank,0.0161
+6,severity_score,0.0102
+7,cluster_size,0.009
+8,file_type,0.0065
+9,tool.name,0.0034
+10,startLine,0.0

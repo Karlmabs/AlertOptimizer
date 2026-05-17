@@ -70,18 +70,36 @@ def generate_dataset(n_alerts=5000, seed=42, fp_rate_target=None):
     n_feat = 8
     X = np.zeros((n_alerts, n_feat))
     y = np.zeros(n_alerts, dtype=int)
+    raw = []  # raw categorical/numeric values for SARIF + CSV export
 
     for i in range(n_alerts):
         rule_idx = rng.randint(0, len(RULES))
         rule_name, base_fp, rule_type = RULES[rule_idx]
 
-        level_idx = rng.choice(4, p=[0.22, 0.38, 0.28, 0.12])
-        file_type = rng.choice(4, p=[0.50, 0.22, 0.15, 0.13])
+        level_idx = int(rng.choice(4, p=[0.22, 0.38, 0.28, 0.12]))
+        file_type = int(rng.choice(4, p=[0.50, 0.22, 0.15, 0.13]))
         tool_idx = rng.randint(0, 3)
-        start_line = rng.randint(1, 2000)
-        rank = rng.uniform(0, 1)
-        occurrence = rng.poisson(3) + 1
-        severity = rng.uniform(0, 1)
+        start_line = int(rng.randint(1, 2000))
+        rank = float(rng.uniform(0, 1))
+        occurrence = int(rng.poisson(3) + 1)
+        severity = float(rng.uniform(0, 1))
+
+        raw.append({
+            "index": i,
+            "rule_id": rule_name,
+            "rule_type": rule_type,
+            "rule_idx": int(rule_idx),
+            "level": LEVELS[level_idx],
+            "level_idx": level_idx,
+            "file_type": FILE_TYPES[file_type],
+            "file_type_idx": file_type,
+            "tool": TOOLS[tool_idx],
+            "tool_idx": int(tool_idx),
+            "start_line": start_line,
+            "rank": rank,
+            "occurrence_count": occurrence,
+            "severity": severity,
+        })
 
         # Normalized features
         X[i, 0] = rule_idx / (len(RULES) - 1)
@@ -157,7 +175,10 @@ def generate_dataset(n_alerts=5000, seed=42, fp_rate_target=None):
             flip = rng.choice(idx, min(abs(diff), len(idx)), replace=False)
             y[flip] = 0
 
-    return X, y
+    for i, rec in enumerate(raw):
+        rec["ground_truth_fp"] = bool(y[i])
+
+    return X, y, raw
 
 
 # ============================================================
@@ -426,7 +447,7 @@ def run_pipeline(seed=42, n_alerts=5000, fp_rate=None, verbose=True,
         print(f"\n  Pipeline seed={seed}, n={n_alerts}" +
               (f", FP cible={fp_rate:.0%}" if fp_rate else ""))
 
-    X, y = generate_dataset(n_alerts, seed, fp_rate)
+    X, y, raw = generate_dataset(n_alerts, seed, fp_rate)
     actual_fp = float(np.mean(y))
     if verbose:
         print(f"  Taux FP réel: {actual_fp:.2%}")
@@ -554,8 +575,9 @@ def run_pipeline(seed=42, n_alerts=5000, fp_rate=None, verbose=True,
         "X_pool": X_pool, "y_pool": y_pool,
         "X_te": X_te_full, "y_te": y_te, "y_prob": y_prob,
         "rf": rf, "cl_fp_map": cl_fp_map,
-        "cl_lab": cl_lab, "X_lab_db": X_lab_db,
+        "cl_lab": cl_lab, "cl_te": cl_te, "X_lab_db": X_lab_db,
         "db_feats": db_feats, "eps": eps, "min_pts": min_pts,
+        "raw": raw, "lab_idx": lab_idx, "pool_idx": pool_idx, "te_idx": te_idx,
         "timings": {"dbscan": t1-t0, "rf": t3-t2}
     }
 
@@ -672,6 +694,287 @@ def feature_importance(result):
 # MAIN
 # ============================================================
 
+# ============================================================
+# SECTION 8 : EXPORT HELPERS (SARIF + CSV)
+# ============================================================
+
+def _csv_escape(v):
+    s = "" if v is None else str(v)
+    if any(c in s for c in [',', '"', '\n', '\r']):
+        s = '"' + s.replace('"', '""') + '"'
+    return s
+
+
+def write_csv(path, rows, header):
+    with open(path, "w") as f:
+        f.write(",".join(header) + "\n")
+        for r in rows:
+            f.write(",".join(_csv_escape(r.get(h)) for h in header) + "\n")
+
+
+def build_sarif(raw_records, augmentations=None):
+    """Build a SARIF v2.1.0 doc. One run per tool.
+    augmentations: optional dict keyed by alert index → extra properties to merge in.
+    """
+    SARIF_LEVELS = {"error", "warning", "note", "none"}
+    by_tool = {}
+    for rec in raw_records:
+        by_tool.setdefault(rec["tool"], []).append(rec)
+
+    runs = []
+    for tool_name, recs in by_tool.items():
+        rule_ids = sorted({r["rule_id"] for r in recs})
+        rules = [{"id": rid, "name": rid,
+                  "shortDescription": {"text": f"Synthetic rule {rid}"}}
+                 for rid in rule_ids]
+        results = []
+        for r in recs:
+            level = r["level"] if r["level"] in SARIF_LEVELS else "warning"
+            props = {
+                "occurrenceCount": r["occurrence_count"],
+                "severity": round(r["severity"], 4),
+                "fileType": r["file_type"],
+                "ruleCategory": r["rule_type"],
+                "groundTruthLabel": "FP" if r["ground_truth_fp"] else "TP",
+                "alertIndex": r["index"],
+            }
+            if augmentations and r["index"] in augmentations:
+                props.update(augmentations[r["index"]])
+            results.append({
+                "ruleId": r["rule_id"],
+                "level": level,
+                "rank": round(r["rank"] * 100, 2),
+                "message": {"text": f"Synthetic alert for rule {r['rule_id']}"},
+                "locations": [{
+                    "physicalLocation": {
+                        "artifactLocation": {
+                            "uri": f"src/{r['file_type']}/file_{r['index'] % 200}.py",
+                            "uriBaseId": "%SRCROOT%"
+                        },
+                        "region": {"startLine": r["start_line"]}
+                    }
+                }],
+                "properties": props
+            })
+        runs.append({
+            "tool": {"driver": {
+                "name": tool_name,
+                "version": "synthetic-1.0",
+                "informationUri": "https://github.com/karlmabs/AlertOptimizer",
+                "rules": rules
+            }},
+            "results": results
+        })
+
+    return {
+        "version": "2.1.0",
+        "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+        "runs": runs
+    }
+
+
+def export_artifacts(out_dir, r, fi, al_p, al_n, fp_sens, seeds_data,
+                     output_summary):
+    os.makedirs(out_dir, exist_ok=True)
+    raw = r["raw"]
+    te_idx = r["te_idx"]
+    cl_te = r["cl_te"]
+    y_prob = r["y_prob"]
+    y_te = r["y_te"]
+    best_t = r["best_threshold"]
+    cl_fp_map = r["cl_fp_map"]
+
+    # 1) Full synthetic dataset SARIF (5000 alerts, ground-truth labels in properties)
+    sarif_full = build_sarif(raw)
+    with open(os.path.join(out_dir, "synthetic_dataset.sarif.json"), "w") as f:
+        json.dump(sarif_full, f, indent=2)
+
+    # 2) Full synthetic dataset CSV (tabular form, easy to inspect)
+    write_csv(
+        os.path.join(out_dir, "synthetic_dataset.csv"),
+        raw,
+        ["index", "rule_id", "rule_type", "tool", "level", "file_type",
+         "start_line", "rank", "occurrence_count", "severity",
+         "ground_truth_fp"]
+    )
+
+    # 3) Test-set predictions CSV (joined with raw metadata + cluster + proba)
+    pred_rows = []
+    for k, gi in enumerate(te_idx):
+        gi_int = int(gi)
+        rec = raw[gi_int]
+        proba = float(y_prob[k])
+        cl_id = int(cl_te[k])
+        cluster_fp_rate = float(cl_fp_map.get(cl_id, 0.5))
+        predicted_fp = bool(proba >= best_t)
+        pred_rows.append({
+            **rec,
+            "split": "test",
+            "cluster_id": cl_id,
+            "cluster_fp_rate": round(cluster_fp_rate, 4),
+            "fp_probability": round(proba, 6),
+            "predicted_fp": predicted_fp,
+            "decision": "filtered" if predicted_fp else "kept",
+            "correct": bool(predicted_fp == rec["ground_truth_fp"]),
+        })
+    write_csv(
+        os.path.join(out_dir, "predictions_test.csv"),
+        pred_rows,
+        ["index", "rule_id", "rule_type", "tool", "level", "file_type",
+         "start_line", "rank", "occurrence_count", "severity",
+         "ground_truth_fp", "cluster_id", "cluster_fp_rate",
+         "fp_probability", "predicted_fp", "decision", "correct"]
+    )
+
+    # 4) Augmented SARIF: test alerts enriched with model output
+    aug_map = {}
+    for row in pred_rows:
+        aug_map[row["index"]] = {
+            "fpProbability": row["fp_probability"],
+            "predictedLabel": "FP" if row["predicted_fp"] else "TP",
+            "decision": row["decision"],
+            "clusterId": row["cluster_id"],
+            "clusterFpRate": row["cluster_fp_rate"],
+            "thresholdUsed": best_t,
+        }
+    sarif_aug = build_sarif([raw[int(gi)] for gi in te_idx], augmentations=aug_map)
+    with open(os.path.join(out_dir, "predictions_test.sarif.json"), "w") as f:
+        json.dump(sarif_aug, f, indent=2)
+
+    # 5) Clusters summary CSV
+    cl_lab = r["cl_lab"]
+    y_lab = r["y_lab"]
+    cluster_rows = []
+    for cid in sorted(set(int(c) for c in cl_lab)):
+        mask = cl_lab == cid
+        size = int(mask.sum())
+        fp_rate = float(y_lab[mask].mean()) if size else 0.0
+        cluster_rows.append({
+            "cluster_id": cid,
+            "is_noise": cid == -1,
+            "size_train": size,
+            "fp_rate_train": round(fp_rate, 4),
+        })
+    write_csv(
+        os.path.join(out_dir, "clusters.csv"),
+        cluster_rows,
+        ["cluster_id", "is_noise", "size_train", "fp_rate_train"]
+    )
+
+    # 6) Feature importance CSV
+    fi_rows = [{"rank": i + 1, **f} for i, f in enumerate(fi)]
+    write_csv(
+        os.path.join(out_dir, "feature_importance.csv"),
+        fi_rows,
+        ["rank", "name", "norm", "raw"] if fi and "raw" in fi[0]
+        else ["rank", "name", "norm"]
+    )
+
+    # 7) Threshold sweep CSV
+    th_rows = []
+    for t in sorted(r["ta"]):
+        m = r["ta"][t]
+        th_rows.append({"threshold": t, **m})
+    write_csv(
+        os.path.join(out_dir, "threshold_sweep.csv"),
+        th_rows,
+        ["threshold", "precision", "recall", "f1", "reduction",
+         "fp_filtered", "fp_kept", "vp_missed", "tn"]
+    )
+
+    # 8) Active learning trajectories CSV
+    al_rows = []
+    for cp, cn in zip(al_p, al_n):
+        al_rows.append({
+            "cycle": cp["cycle"],
+            "f1_perfect": cp["f1"],
+            "prec_perfect": cp["prec"],
+            "rec_perfect": cp["rec"],
+            "f1_noisy": cn["f1"],
+            "prec_noisy": cn["prec"],
+            "rec_noisy": cn["rec"],
+            "uncertain_pool": cp["unc"],
+            "pool_size": cp["pool_size"],
+        })
+    write_csv(
+        os.path.join(out_dir, "active_learning.csv"),
+        al_rows,
+        ["cycle", "f1_perfect", "prec_perfect", "rec_perfect",
+         "f1_noisy", "prec_noisy", "rec_noisy",
+         "uncertain_pool", "pool_size"]
+    )
+
+    # 9) Seeds stability CSV
+    seed_rows = [{"seed": s, **v} for s, v in seeds_data.items()]
+    write_csv(
+        os.path.join(out_dir, "seeds.csv"),
+        seed_rows,
+        ["seed", "f1", "prec", "rec", "roc", "red", "n_cl"]
+    )
+
+    # 10) FP sensitivity CSV
+    fps_rows = []
+    for fp, m in fp_sens.items():
+        fps_rows.append({"fp_rate_target": fp, **m})
+    write_csv(
+        os.path.join(out_dir, "fp_sensitivity.csv"),
+        fps_rows,
+        ["fp_rate_target", "precision", "recall", "f1", "reduction",
+         "fp_filtered", "fp_kept", "vp_missed", "tn", "n_cl"]
+    )
+
+    # 11) Summary report (markdown)
+    m = r["main"]
+    summary = [
+        "# AlertOptimizer — Run Summary",
+        "",
+        f"- Seed: 42",
+        f"- Alerts: {len(raw)} (test set: {len(te_idx)})",
+        f"- True FP rate: {r['fp_rate']:.2%}",
+        f"- DBSCAN clusters: {r['n_cl']}  (noise: {r['noise']:.1%})",
+        f"- Optimal threshold: {best_t}",
+        "",
+        "## Main metrics (test set)",
+        f"- F1: {m['f1']:.3f}",
+        f"- Precision: {m['precision']:.3f}",
+        f"- Recall (FP): {m['recall']:.3f}",
+        f"- Reduction: {m['reduction']:.1%}",
+        f"- ROC-AUC: {r['roc_auc']:.3f}",
+        f"- PR-AUC: {r['pr_auc']:.3f}",
+        "",
+        "## Baselines (F1)",
+        f"- B0 (keep all): {r['b0']['f1']:.3f}",
+        f"- B1 (static rules): {r['b1']['f1']:.3f}",
+        f"- B2 (RF only): {r['b2']['f1']:.3f}",
+        f"- B3 (DBSCAN only): {r['b3']['f1']:.3f}",
+        "",
+        "## Hypotheses",
+    ]
+    h = output_summary["hypotheses"]
+    summary += [
+        f"- H1 (Réd>50% & Rap≥85%): {'VALIDATED' if h['H1'] else 'NOT VALIDATED'}",
+        f"- H2 (ΔF1 DBSCAN ≥ 0.05): {'VALIDATED' if h['H2'] else 'NOT VALIDATED'}",
+        f"- H3 perfect AL (ΔF1 ≥ 0.03): {'VALIDATED' if h['H3_perfect'] else 'NOT VALIDATED'}",
+        f"- H3 noisy AL (ΔF1 ≥ 0.03): {'VALIDATED' if h['H3_noisy'] else 'NOT VALIDATED'}",
+        "",
+        "## Generated artifacts",
+        "- `synthetic_dataset.sarif.json` — full 5000-alert dataset in SARIF v2.1.0",
+        "- `synthetic_dataset.csv` — same dataset, tabular",
+        "- `predictions_test.csv` — per-alert predictions on test set",
+        "- `predictions_test.sarif.json` — test alerts augmented with model output",
+        "- `clusters.csv` — DBSCAN cluster sizes and FP rates",
+        "- `feature_importance.csv` — permutation importance",
+        "- `threshold_sweep.csv` — metrics at every threshold",
+        "- `active_learning.csv` — AL trajectories (perfect vs noisy)",
+        "- `seeds.csv` — per-seed metrics",
+        "- `fp_sensitivity.csv` — metrics across target FP rates",
+        "- `summary.md` — this file",
+        "",
+    ]
+    with open(os.path.join(out_dir, "summary.md"), "w") as f:
+        f.write("\n".join(summary))
+
+
 def main():
     print("="*70)
     print("  ALERTOPTIMIZER v6 — VALIDATION EXPÉRIMENTALE FINALE")
@@ -784,12 +1087,20 @@ def main():
         "timings": {k: round(v,2) for k,v in r["timings"].items()}
     }
 
-    out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "alertoptimizer_results.json")
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    out_path = os.path.join(script_dir, "alertoptimizer_results.json")
     with open(out_path, "w") as f:
         json.dump(output, f, indent=2,
                   default=lambda x: float(x) if isinstance(x, np.floating)
                   else int(x) if isinstance(x, np.integer) else str(x))
     print(f"\n  Résultats: {out_path}")
+
+    out_dir = os.path.join(script_dir, "outputs")
+    export_artifacts(out_dir, r, fi, al_p, al_n, fp_sens, seeds_data, output)
+    print(f"  Artefacts: {out_dir}/")
+    for name in sorted(os.listdir(out_dir)):
+        size_kb = os.path.getsize(os.path.join(out_dir, name)) / 1024
+        print(f"    - {name}  ({size_kb:.1f} KB)")
 
 
 if __name__ == "__main__":
