@@ -14,6 +14,7 @@ Auteur : MABOU KOUAM Karl — Master 2 — École IT Brussels
 import numpy as np
 import json
 import time
+import os
 
 # ============================================================
 # SECTION 1 : DATASET
@@ -783,7 +784,7 @@ def main():
         "timings": {k: round(v,2) for k,v in r["timings"].items()}
     }
 
-    out_path = "/sessions/awesome-stoic-edison/alertoptimizer_results.json"
+    out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "alertoptimizer_results.json")
     with open(out_path, "w") as f:
         json.dump(output, f, indent=2,
                   default=lambda x: float(x) if isinstance(x, np.floating)
