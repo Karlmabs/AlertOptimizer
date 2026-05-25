@@ -23,6 +23,17 @@ env/
 .DS_Store
 Thumbs.db
 
-# Results (regenerable)
-*.json
-!package.json
+# Mémoire — synthetic outputs (regenerable by running alertoptimizer.py)
+alertoptimizer_results.json
+outputs/*.sarif.json
+
+# Rattrapage — public datasets (re-downloaded via scripts, see rattrapage/README.md)
+rattrapage/data/
+
+# Rattrapage — raw SARIF outputs (large, regenerable from Semgrep)
+rattrapage/results/semgrep*.sarif.json
+
+# Rattrapage — derived/large CSV datasets (regenerable from the scripts)
+rattrapage/results/real_dataset*.csv
+rattrapage/results/juliet_dataset.csv
+rattrapage/results/owasp_dataset.csv
