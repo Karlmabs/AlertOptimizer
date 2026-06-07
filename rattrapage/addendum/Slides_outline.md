@@ -141,13 +141,13 @@ Master 2 — Expert en Ingénierie Informatique
 
 | FP cible | F1 | Rappel | Réduction | ROC-AUC |
 |---|---|---|---|---|
-| 30 % | **0,906** | 0,883 | 27,9 % | 0,973 |
-| 40 % | 0,893 | 0,876 | 37,0 % | 0,977 |
-| 50 % | 0,853 | 0,884 | 50,1 % | 0,948 |
-| 60 % | 0,827 | 0,853 | 56,9 % | 0,937 |
-| 70 % | 0,781 | 0,789 | 64,1 % | 0,889 |
+| 30 % | **0,906** | 0,919 | 27,9 % | 0,905 |
+| 40 % | 0,893 | 0,916 | 37,0 % | 0,926 |
+| 50 % | 0,853 | 0,852 | 50,1 % | 0,930 |
+| 60 % | 0,827 | 0,858 | 56,9 % | 0,937 |
+| 70 % | 0,781 | 0,858 | 64,1 % | 0,931 |
 
-→ À 30 % de FP, le pipeline atteint **F1 = 0,906 et ROC-AUC = 0,973**.
+→ À 30 % de FP, le pipeline atteint **F1 = 0,906** ; le ROC-AUC reste stable (0,905–0,937) sur toute la plage.
 
 > *Speaker note* : Le système se comporte de manière prévisible et stable à travers toute la plage opérationnelle. Pas de cliff effect, pas de zone aveugle. C'est crucial pour un déploiement en production où la distribution des FP varie selon les outils et les projets.
 

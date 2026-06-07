@@ -71,7 +71,7 @@ Les CWEs sont normalisées (suppression des zéros de tête : `089` ↔ `89` ↔
 
 Le pipeline est strictement identique à celui du mémoire (`alertoptimizer.py v6`) : extraction de 8 features SARIF, DBSCAN sur 4 features contextuelles (ε=0,25, MinPts=3), enrichissement par 2 features de cluster (cluster_fp_rate, cluster_size), Random Forest (50 arbres, profondeur 14, sqrt(n_features)), seuil F1-optimal sous contraintes (rappel ≥ 0,85, réduction ≥ 0,50).
 
-Ajout d'une **9ᵉ feature de contexte** : `is_taint_rule` (1 si le `rule_id` contient `tainted`, `path-traversal`, `no-direct-response-writer`, `trust_boundary`, ou `servlet_parameter`, sinon 0). Cette feature distingue les règles de pattern-matching pur des règles de taint-tracking, sans nécessiter d'inspecter le code source.
+Ajout d'une **9ᵉ feature de contexte** : `is_taint_rule` (identifiant `is_ctx_rule` dans le code) — 1 si le `rule_id` contient `tainted`, `path-traversal`, `no-direct-response-writer`, `trust_boundary`, ou `servlet_parameter`, sinon 0. Cette feature distingue les règles de pattern-matching pur des règles de taint-tracking, sans nécessiter d'inspecter le code source.
 
 **Optimisations techniques** (pour scaler à 66 k alertes) :
 - `chunked_dbscan` : calcul des voisinages par blocs de 512 lignes, RAM constante au lieu de O(n²·d)
@@ -121,7 +121,7 @@ DBSCAN : 7 clusters, 0 % de bruit. Temps d'entraînement complet : **2 s** (RF) 
 | 1 | `rule.id` | **49,1 %** | 81,7 % |
 | 2 | `occurrenceCount` | 22,9 % | 0,1 % |
 | 3 | `start_line` | 12,2 % | 0,1 % |
-| 4 | `is_taint_rule` (ajoutée) | 7,2 % | — |
+| 4 | `is_taint_rule` (code : `is_ctx_rule`, ajoutée) | 7,2 % | — |
 | 5 | `cluster_fp_rate` | 4,4 % | 6,7 % |
 | 6 | `cluster_size` | 1,6 % | 0,5 % |
 | 7 | `level` | 0,8 % | 4,5 % |
@@ -136,6 +136,10 @@ DBSCAN : 7 clusters, 0 % de bruit. Temps d'entraînement complet : **2 s** (RF) 
 - Les features qui étaient quasi-aléatoires sur synthétique (`severity`, `rank` à 1-2 %) se confirment comme telles sur réel : ce n'était pas un artefact de la génération, c'est leur valeur intrinsèque sur cette représentation.
 
 Le modèle ne fonctionne plus comme une table de correspondance. Il combine effectivement plusieurs sources d'information.
+
+**Précision sur les features (pour lever toute ambiguïté de nommage)** :
+- `occurrenceCount` désigne ici le **nombre d'alertes partageant le même fichier** (densité de co-localisation, normalisée par 15), et non le champ `occurrenceCount` de SARIF — Semgrep ne le renseigne pas. C'est un signal de contexte fort : un fichier saturé d'alertes est plus susceptible de contenir des FP.
+- `level`, `rank` et `severity` sont trois transformations déterministes du même champ SARIF `level` (Semgrep ne remplit ni `rank` ni `severity` séparément). Elles sont donc partiellement colinéaires, ce que confirme leur importance résiduelle (0,3 – 0,8 %). Elles sont conservées par fidélité au gabarit à 8 features du mémoire initial, mais leur faible poids est attendu et cohérent.
 
 ### 3.4 EXP 3 — Active Learning, oracle parfait (5 cycles × 150 requêtes)
 
@@ -166,13 +170,13 @@ Le gain total après 5 cycles est de **+0,010 (+1,0 %)** — sous le seuil de 3 
 
 | FP cible | FP réel | F1 | Rappel | Réduction | ROC-AUC |
 |---|---|---|---|---|---|
-| 30 % | 30,0 % | **0,906** | 0,883 | 27,9 % | 0,973 |
-| 40 % | 40,0 % | 0,893 | 0,876 | 37,0 % | 0,977 |
-| 50 % | 50,0 % | 0,853 | 0,884 | 50,1 % | 0,948 |
-| 60 % | 60,0 % | 0,827 | 0,853 | 56,9 % | 0,937 |
-| 70 % | 70,0 % | 0,781 | 0,789 | 64,1 % | 0,889 |
+| 30 % | 30,0 % | **0,906** | 0,919 | 27,9 % | 0,905 |
+| 40 % | 40,0 % | 0,893 | 0,916 | 37,0 % | 0,926 |
+| 50 % | 50,0 % | 0,853 | 0,852 | 50,1 % | 0,930 |
+| 60 % | 60,0 % | 0,827 | 0,858 | 56,9 % | 0,937 |
+| 70 % | 70,0 % | 0,781 | 0,858 | 64,1 % | 0,931 |
 
-Comportement linéaire propre : à mesure que le taux de FP augmente, le F1 baisse (la précision se dégrade) mais la réduction augmente (plus à filtrer). À 30 % de FP, le pipeline atteint **F1 = 0,906 et ROC-AUC = 0,973** — performance excellente sur la moitié du spectre.
+Comportement linéaire propre sur F1 et réduction : à mesure que le taux de FP augmente, le F1 baisse (la précision se dégrade) mais la réduction augmente (plus à filtrer). À 30 % de FP, le pipeline atteint **F1 = 0,906** — performance excellente sur la moitié basse du spectre. Le ROC-AUC reste élevé et stable (0,905–0,937) sur toute la plage, sans tendance monotone marquée.
 
 ### 3.7 EXP 6 — Stabilité inter-seeds (5 graines, parallèle)
 
@@ -183,7 +187,7 @@ Comportement linéaire propre : à mesure que le taux de FP augmente, le F1 bais
 | 256 | 0,870 | 0,963 | — |
 | 512 | 0,869 | 0,964 | — |
 | 1024 | 0,872 | 0,959 | — |
-| **Moyenne ± σ** | **0,871 ± 0,002** | **0,963 ± 0,003** | — |
+| **Moyenne ± σ** | **0,871 ± 0,002** | **0,963 ± 0,002** | — |
 
 L'écart-type sur F1 est de **0,002** — soit **÷10 par rapport au synthétique** (0,019). Le système est extrêmement stable sur les vraies données.
 
