@@ -1,194 +1,144 @@
 # AlertOptimizer
 
-**Pipeline de filtrage intelligent des faux positifs SAST dans un contexte DevSecOps**
+**Pipeline de filtrage intelligent des faux positifs SAST (DBSCAN + Random Forest, NumPy pur)**
 
-> Projet de memoire de Master 2 — Ecole IT Brussels / Hexagone  
+> Projet de mémoire de Master 2 — École IT Brussels / Hexagone
 > Auteur : MABOU KOUAM Karl
 
 ---
 
-## Contexte
+## ⚡ TL;DR
 
-Les outils d'analyse statique de securite (SAST) generent un volume considerable d'alertes dont **35% a 91% sont des faux positifs** (Muske & Serebrenik, 2016). Ce phenomene d'**alert fatigue** pousse les developpeurs a ignorer progressivement toutes les alertes, y compris les vraies vulnerabilites.
+Les outils SAST génèrent **35 % à 91 % de faux positifs** (Muske & Serebrenik, 2016), ce qui provoque l'*alert fatigue*. AlertOptimizer apprend à filtrer ces faux positifs tout en préservant les vraies vulnérabilités, avec un pipeline ML implémenté **entièrement en NumPy** (zéro dépendance sklearn).
 
-AlertOptimizer propose un pipeline de Machine Learning pour **filtrer automatiquement les faux positifs** tout en preservant les vraies alertes de securite.
+Le projet existe en **deux temps** :
 
-## Architecture
+| | Mémoire initial | Rattrapage *(résultats de référence)* |
+|---|---|---|
+| **Dataset** | 5 000 alertes synthétiques | **66 227 alertes réelles** (OWASP Benchmark + NIST Juliet, scan Semgrep) |
+| **Labels** | générés par l'auteur | fournis par des tiers (frameworks de test) |
+| **F1-Score** | 0,801 | **0,874** |
+| **ROC-AUC** | 0,868 | **0,966** |
+| **Réduction du volume** | 44 % | **69 %** (à 86 % de rappel) |
+| **Importance de `rule.id`** | 81,7 % | **49,1 %** |
+| **H1 (réduction + rappel)** | partielle | **VALIDÉE ✓** |
 
-Le pipeline suit une architecture sequentielle en trois modules :
+> 👉 **Les résultats de référence du projet sont ceux du rattrapage** (`rattrapage/`). Le pipeline synthétique décrit plus bas est conservé pour l'historique et la reproductibilité.
+
+**Pour démarrer :** voir **[QUICKSTART.md](QUICKSTART.md)** — clone → backend → frontend → wizard 10 étapes.
+
+---
+
+## Pourquoi un rattrapage ?
+
+La soutenance initiale a été recalée sur trois critiques du jury :
+
+1. **Dataset synthétique** → le modèle « redécouvre » des patterns qu'on lui a programmés (circularité).
+2. **`rule.id` à 81,7 % de l'importance** → effet table de correspondance, pas de vrai apprentissage.
+3. **Un simple `GROUP BY rule_id` suffirait** → plus-value du ML non démontrée.
+
+Le dossier **[`rattrapage/`](rattrapage/)** répond expérimentalement à chacune, en re-rejouant **l'intégralité du protocole (EXP 1→8 + H1/H2/H3)** sur des données réelles aux labels indépendants. Réponses mesurées :
+
+1. **Données réelles** (OWASP Benchmark Java v1.2 + NIST Juliet v1.3, 66 227 alertes labellisées par les frameworks eux-mêmes).
+2. **`rule.id` tombe à 49,1 %** — le modèle exploite désormais le contexte, pas un dictionnaire de règles.
+3. **Le pipeline bat `GROUP BY rule_id` de +11,4 pts F1** (0,874 vs 0,760) sur 66 k alertes : le ML s'impose sans ambiguïté.
+
+Détails complets : **[`rattrapage/addendum/Addendum_AlertOptimizer.md`](rattrapage/addendum/Addendum_AlertOptimizer.md)**.
+
+### Verdicts sur données réelles
+
+| Hypothèse | Critère | Synthétique | Réel | Verdict |
+|---|---|---|---|---|
+| **H1** | Réduction > 50 % ET rappel ≥ 85 % | 44 % / 86 % | **69 % / 86 %** | **VALIDÉE ✓** |
+| **H2** | ΔF1 apporté par DBSCAN ≥ 5 pts | −1,6 pts | +2,9 pts | NON VALIDÉE ✗ |
+| **H3** | ΔF1 après 5 cycles d'apprentissage actif ≥ 3 % | +3,1 pts | +1,0 pt | NON VALIDÉE ✗ |
+
+> H2 et H3 restent non validées, mais pour des raisons que l'expérimentation éclaire (DBSCAN aide désormais au lieu de nuire ; l'AL plafonne parce que le modèle démarre déjà très haut). Stabilité sur 5 seeds : **σ(F1) = 0,002** sur réel (÷10 vs synthétique).
+
+---
+
+## Architecture du pipeline
 
 ```
 Alertes SARIF v2.1.0 (JSON)
-        |
-        v
-[Module 1] Ingestion SARIF ──> 8 features normalisees
-        |
-        v
-[Module 2a] DBSCAN Clustering ──> 41 clusters + 2 features derivees
-        |
-        v
-[Module 2b] Random Forest (50 arbres, depth=14) ──> P(FP) par alerte
-        |
-        v
-[Module 3] Apprentissage actif (uncertainty sampling)
-        |
-        v
-Sortie : SARIF augmente + scores FP
+        │
+        ▼
+[Module 1] Ingestion SARIF ──────────────▶ 8 features normalisées
+        │
+        ▼
+[Module 2a] DBSCAN (densité) ────────────▶ clusters + 2 features dérivées
+        │                                   (cluster_fp_rate, cluster_size)
+        ▼
+[Module 2b] Random Forest (NumPy pur) ───▶ P(faux positif) par alerte
+        │
+        ▼
+[Module 3] Apprentissage actif ──────────▶ uncertainty sampling (5 cycles)
+        │
+        ▼
+SARIF augmenté + scores FP
 ```
-
-### Choix techniques
 
 | Composant | Choix | Justification |
-|-----------|-------|---------------|
-| Clustering | DBSCAN | Decouvre automatiquement le nombre de clusters, detecte le bruit, pas besoin de fixer k |
-| Classification | Random Forest | Interpretable, probabilites calibrees, robuste au surapprentissage, implementable from scratch |
-| Apprentissage actif | Uncertainty sampling | Simple, efficace, s'integre naturellement avec les probabilites du RF |
-| Implementation | NumPy pur (from scratch) | Auditabilite complete, securite de la chaine d'approvisionnement, portabilite |
-| Format d'entree | SARIF v2.1.0 | Standard OASIS, agnostique de l'outil SAST |
+|---|---|---|
+| Clustering | **DBSCAN** | trouve le nombre de clusters tout seul, détecte le bruit, pas de `k` à fixer |
+| Classification | **Random Forest** | interprétable, probabilités calibrées, robuste au surapprentissage |
+| Apprentissage actif | **Uncertainty sampling** | simple, s'intègre aux probabilités du RF |
+| Implémentation | **NumPy pur** | auditabilité totale, sécurité supply-chain, portabilité |
+| Format d'entrée | **SARIF v2.1.0** | standard OASIS, agnostique de l'outil SAST |
 
-## Resultats
+Algorithmes implémentés from scratch : DBSCAN (Ester et al., 1996), Random Forest (Breiman, 2001), Active Learning (Settles, 2009).
 
-### Performances globales
+---
 
-| Metrique | Valeur |
-|----------|--------|
-| F1-Score | **0.801** |
-| ROC-AUC | **0.868** |
-| PR-AUC | **0.852** |
-| Precision | 0.749 |
-| Rappel (FP) | 0.861 |
-| Taux de reduction | 44.0% |
-
-### Hypotheses
-
-| Hypothese | Critere | Resultat | Verdict |
-|-----------|---------|----------|---------|
-| H1 | >50% reduction + >85% rappel | 44% + 86.1% | **Partielle** |
-| H2 | +5 pts F1 avec DBSCAN | -1.6 pts | **Infirmee** |
-| H3 (parfait) | +3% F1 apres 5 cycles AL | +3.1% | **Validee** |
-| H3 (bruite) | +3% F1 apres 5 cycles AL | +2.7% | **Non validee** |
-
-### Importance des features
+## Structure du dépôt
 
 ```
- 1. rule.id              81.7%
- 2. cluster_fp_rate       6.7%
- 3. level                 4.5%
- 4. file_type             3.1%
- 5. severity              1.8%
- 6. rank                  1.2%
- 7. cluster_size          0.5%
- 8. tool                  0.3%
- 9. start_line            0.1%
-10. occurrenceCount       0.1%
+AlertOptimizer/
+├── README.md                  ← vous êtes ici
+├── QUICKSTART.md              ← démarrage pas à pas (rattrapage + UI)
+├── LICENSE                    ← MIT
+├── requirements.txt           ← dépendances du pipeline synthétique (numpy)
+├── alertoptimizer.py          ← mémoire initial : pipeline synthétique complet
+│
+└── rattrapage/                ← RÉSULTATS DE RÉFÉRENCE (données réelles)
+    ├── README.md              ← détail du protocole rattrapage
+    ├── addendum/              ← Addendum_AlertOptimizer.md + plan de slides
+    ├── scripts/               ← construction dataset + expériences + grid search
+    ├── results/               ← datasets joints, SARIF, CSV de résultats
+    ├── data/                  ← sources OWASP/Juliet (re-téléchargées, git-ignorées)
+    └── ui/                    ← wizard de soutenance (Next.js + FastAPI)
+        ├── backend/           ← FastAPI : rejoue chaque étape en flux SSE
+        └── frontend/          ← assistant interactif en 10 étapes
 ```
 
-### Stabilite (5 seeds)
+---
 
-F1-Score moyen : **0.793 +/- 0.019** (seeds: 42, 123, 256, 512, 1024)
-
-## Installation et utilisation
-
-### Prerequis
-
-- Python 3.8+
-- NumPy >= 1.21
-
-### Installation
+## Exécution rapide (mémoire synthétique)
 
 ```bash
 git clone https://github.com/karlmabs/AlertOptimizer.git
 cd AlertOptimizer
 pip install -r requirements.txt
+python alertoptimizer.py        # rejoue les 8 expériences synthétiques
 ```
 
-### Execution
+Résultats écrits dans `alertoptimizer_results.json`.
 
-```bash
-python alertoptimizer.py
-```
+## Exécution complète (rattrapage sur données réelles)
 
-Le script execute automatiquement 8 experiences :
-1. Pipeline principal (DBSCAN + RF)
-2. Importance des features par permutation
-3. Apprentissage actif avec retour parfait
-4. Apprentissage actif avec retour bruite (10%)
-5. Sensibilite a la proportion de faux positifs
-6. Stabilite inter-seeds (5 seeds)
-7. Analyse des seuils de decision
-8. Courbes ROC et PR
+Tout est rejouable depuis le **wizard UI** (qui télécharge les sources, scanne, construit le dataset, lance la grid search puis le pipeline). Voir **[QUICKSTART.md](QUICKSTART.md)**.
 
-Les resultats sont sauvegardes dans `alertoptimizer_results.json`.
+---
 
-## Dataset
-
-Le pipeline utilise un dataset synthetique de **5 000 alertes** au format SARIF v2.1.0 :
-
-- **32 regles** reparties en 3 categories : 10 FP clairs, 10 VP clairs, 12 contextuels
-- **Split** : 10% train / 40% pool / 50% test
-- **Taux FP** : ~51.4% (moyenne ponderee)
-- **5 seeds** independants pour la validation
-
-### 10 Features
-
-| # | Feature | Type | Source |
-|---|---------|------|--------|
-| 1 | rule.id | Categorielle | SARIF |
-| 2 | level | Categorielle | SARIF |
-| 3 | file_type | Categorielle | SARIF |
-| 4 | tool.name | Categorielle | SARIF |
-| 5 | start_line | Numerique | SARIF |
-| 6 | rank | Numerique | SARIF |
-| 7 | occurrenceCount | Numerique | SARIF |
-| 8 | severity | Numerique | SARIF |
-| 9 | cluster_fp_rate | Derivee | DBSCAN |
-| 10 | cluster_size | Derivee | DBSCAN |
-
-## Algorithmes implementes from scratch
-
-### DBSCAN (Ester et al., 1996)
-- Distance euclidienne normalisee sur 4 features contextuelles
-- Parametres : epsilon = 0.25, MinPts = 3
-- Resultat : 41 clusters, 7.4% bruit
-
-### Random Forest (Breiman, 2001)
-- 50 arbres, profondeur max 14
-- Critere de split : impurete de Gini
-- Bootstrap aggregating + feature randomization (sqrt)
-- Class weighting balanced
-
-### Apprentissage actif (Settles, 2009)
-- Pool-based uncertainty sampling
-- 5 cycles de 150 requetes
-- Variante avec oracle bruite (10% erreur)
-
-## Structure du code
-
-```
-AlertOptimizer/
-  alertoptimizer.py      # Pipeline complet (dataset, DBSCAN, RF, AL, metriques)
-  requirements.txt       # Dependances (NumPy uniquement)
-  README.md
-  LICENSE
-```
-
-Le fichier `alertoptimizer.py` contient 7 sections :
-1. **Dataset** : Generation synthetique SARIF
-2. **DBSCAN** : Clustering par densite
-3. **Random Forest** : Classification (DecisionTree + RandomForest)
-4. **Metriques** : F1, ROC-AUC, PR-AUC, seuil optimal
-5. **Pipeline** : Orchestration DBSCAN -> RF + baselines
-6. **Active Learning** : Boucle d'apprentissage actif
-7. **Feature Importance** : Importance par permutation
-
-## References
+## Références
 
 - Breiman, L. (2001). Random Forests. *Machine Learning*, 45(1), 5-32.
 - Ester, M. et al. (1996). A Density-Based Algorithm for Discovering Clusters. *KDD*.
-- Settles, B. (2009). Active Learning Literature Survey. *UW-Madison Tech Report 1648*.
+- Settles, B. (2009). Active Learning Literature Survey. *UW-Madison TR 1648*.
 - Muske, T. & Serebrenik, A. (2016). Survey of Approaches for Handling Static Analysis Alarms. *SCAM*.
 - OASIS (2020). Static Analysis Results Interchange Format (SARIF) v2.1.0.
+- OWASP Benchmark Project ; NIST Juliet Test Suite for Java (SARD).
 
 ## Licence
 
-MIT License - voir [LICENSE](LICENSE)
+MIT — voir [LICENSE](LICENSE).

@@ -1,0 +1,241 @@
+@import "tailwindcss";
+
+@theme {
+  /* ──────────────────────────────────────────────────────
+     Palette — slate-950 base, accent emerald (validated),
+     coral (failed), cyan (data), amber (warning)
+     ────────────────────────────────────────────────────── */
+  --color-bg: oklch(15% 0.02 270);
+  --color-bg-elevated: oklch(20% 0.025 270);
+  --color-bg-glass: oklch(22% 0.025 270 / 0.6);
+  --color-border: oklch(30% 0.02 270);
+  --color-border-strong: oklch(40% 0.025 270);
+  --color-fg: oklch(96% 0.02 270);
+  --color-fg-muted: oklch(70% 0.02 270);
+  --color-fg-subtle: oklch(50% 0.02 270);
+
+  --color-accent: oklch(72% 0.18 162); /* emerald */
+  --color-accent-dim: oklch(50% 0.15 162);
+  --color-danger: oklch(70% 0.21 25); /* coral */
+  --color-danger-dim: oklch(50% 0.18 25);
+  --color-info: oklch(75% 0.16 220); /* cyan */
+  --color-info-dim: oklch(55% 0.14 220);
+  --color-warn: oklch(80% 0.16 80); /* amber */
+  --color-warn-dim: oklch(60% 0.14 80);
+
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --radius: 0.75rem;
+
+  /* ──────────────────────────────────────────────────────
+     Motion presets (consumed by Framer Motion via JS)
+     ────────────────────────────────────────────────────── */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-expo: cubic-bezier(0.87, 0, 0.13, 1);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html,
+  body {
+    background:
+      radial-gradient(
+        ellipse 80% 60% at 50% -20%,
+        oklch(28% 0.08 270 / 0.5) 0%,
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse 60% 40% at 90% 100%,
+        oklch(30% 0.1 220 / 0.3) 0%,
+        transparent 60%
+      ),
+      var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-bg);
+  }
+
+  /* Subtle scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-fg-subtle);
+  }
+}
+
+@layer utilities {
+  /* Glassmorphic surface */
+  .glass {
+    background: var(--color-bg-glass);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--color-border);
+    box-shadow:
+      0 0 0 1px oklch(100% 0 0 / 0.03),
+      0 20px 50px -20px oklch(0% 0 0 / 0.4);
+  }
+
+  .glass-strong {
+    background: var(--color-bg-elevated);
+    backdrop-filter: blur(40px) saturate(200%);
+    -webkit-backdrop-filter: blur(40px) saturate(200%);
+    border: 1px solid var(--color-border-strong);
+  }
+
+  /* Subtle gradient borders */
+  .border-gradient {
+    position: relative;
+    isolation: isolate;
+  }
+  .border-gradient::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: linear-gradient(
+      135deg,
+      oklch(100% 0 0 / 0.15),
+      oklch(100% 0 0 / 0.02) 50%,
+      oklch(100% 0 0 / 0.08)
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  /* Glow effects */
+  .glow-accent {
+    box-shadow:
+      0 0 30px -5px var(--color-accent-dim),
+      0 0 60px -20px var(--color-accent);
+  }
+  .glow-danger {
+    box-shadow:
+      0 0 30px -5px var(--color-danger-dim),
+      0 0 60px -20px var(--color-danger);
+  }
+  .glow-info {
+    box-shadow:
+      0 0 30px -5px var(--color-info-dim),
+      0 0 60px -20px var(--color-info);
+  }
+
+  /* Animated grid background */
+  .grid-bg {
+    background-image:
+      linear-gradient(to right, var(--color-border) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--color-border) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+  }
+
+  /* Number with subtle gradient */
+  .num-gradient {
+    background: linear-gradient(
+      180deg,
+      var(--color-fg) 0%,
+      var(--color-fg-muted) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .num-accent {
+    background: linear-gradient(
+      180deg,
+      var(--color-accent) 0%,
+      var(--color-accent-dim) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Animated shimmer for skeletons / loading */
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      oklch(100% 0 0 / 0.05),
+      transparent
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+
+  /* Subtle pulse glow */
+  @keyframes pulse-glow {
+    0%, 100% {
+      opacity: 0.5;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+  .pulse-glow {
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+
+  /* Slow rotate for ambient elements */
+  @keyframes rotate-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  .rotate-slow {
+    animation: rotate-slow 60s linear infinite;
+  }
+
+  /* Floating dots animation for data flow */
+  @keyframes float-y {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+  .float-y {
+    animation: float-y 4s ease-in-out infinite;
+  }
+}
