@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { CheckCircle2, Circle, CircleDot, AlertCircle, Loader2, ListTree, GaugeCircle, Sliders, Beaker, RotateCw } from "lucide-react";
+import { CheckCircle2, Circle, CircleDot, AlertCircle, Loader2, ListTree, GaugeCircle, Sliders, Beaker, ShieldCheck, RotateCw } from "lucide-react";
 import { WORKFLOW } from "@/lib/workflow";
 import { getAllStates, subscribe, resetAll, type StepStatus } from "@/lib/workflow-store";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,7 @@ const EXTRA_TOOLS = [
   { href: "/hyperparams", label: "Atelier hyperparams", icon: Sliders, after: 7 },
   { href: "/alerts", label: "Explorer les alertes", icon: ListTree, after: 7 },
   { href: "/active-learning", label: "Labo d'AL interactif", icon: Beaker, after: 7 },
+  { href: "/generalization", label: "Épreuve de généralisation", icon: ShieldCheck, after: 7 },
 ] as const;
 
 export function NavSidebar() {

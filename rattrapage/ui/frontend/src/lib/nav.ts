@@ -8,6 +8,7 @@ import {
   Beaker,
   Layers,
   Play,
+  ShieldCheck,
 } from "lucide-react";
 
 export type NavItem = {
@@ -65,6 +66,13 @@ export const NAV: NavItem[] = [
     short: "Active Learning",
     description: "Tu joues l'oracle, le modèle se ré-entraîne cycle par cycle",
     icon: Beaker,
+  },
+  {
+    href: "/generalization",
+    label: "Épreuve de généralisation",
+    short: "Generalization",
+    description: "LODO cross-dataset + ablation rule.id — le test qui répond au jury",
+    icon: ShieldCheck,
   },
   {
     href: "/compare",

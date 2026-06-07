@@ -501,6 +501,12 @@ async def run_merge():
     return EventSourceResponse(_stream_subprocess("merge_datasets.py"))
 
 
+@app.get("/api/run/lodo")
+async def run_lodo():
+    """LODO (cross-dataset generalization) + ablation sans rule.id. ~90 s."""
+    return EventSourceResponse(_stream_subprocess("lodo_ablation.py"))
+
+
 if __name__ == "__main__":
     import uvicorn
 

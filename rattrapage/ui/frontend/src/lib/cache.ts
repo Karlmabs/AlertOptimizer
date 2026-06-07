@@ -30,6 +30,51 @@ export async function tryReadWorkbenchPool(): Promise<PoolItem[] | null> {
   return tryReadJson<PoolItem[]>("workbench_pool.json");
 }
 
+export type LodoCell = {
+  f1: number;
+  f1_std: number;
+  roc_auc: number;
+  precision: number;
+  recall: number;
+  reduction: number;
+  n_train: number;
+  n_test: number;
+  n_clusters: number;
+  kind: "in-distribution" | "cross-dataset";
+};
+
+export type LodoResults = {
+  config: {
+    seeds: number[];
+    sources: string[];
+    note_source_off: string;
+    note_threshold: string;
+  };
+  lodo_matrix: Record<string, LodoCell>;
+  lodo_summary: {
+    in_distribution_f1: number;
+    cross_dataset_f1: number;
+    in_distribution_roc: number;
+    cross_dataset_roc: number;
+    gap_f1: number;
+    generalizes: boolean;
+  };
+  ablation: {
+    pooled_with_rule: { f1: number; roc_auc: number };
+    pooled_without_rule: { f1: number; roc_auc: number };
+    pooled_delta_f1: number;
+    per_cell: Record<
+      string,
+      { with_rule: number; without_rule: number; delta_f1: number; roc_without: number; kind: string }
+    >;
+    not_a_lookup_table: boolean;
+  };
+};
+
+export async function tryReadLodoResults(): Promise<LodoResults | null> {
+  return tryReadJson<LodoResults>("lodo_ablation_results.json");
+}
+
 async function tryReadJson<T>(filename: string): Promise<T | null> {
   try {
     const p = path.join(process.cwd(), "public", "data", filename);
