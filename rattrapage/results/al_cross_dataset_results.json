@@ -1,0 +1,256 @@
+{
+  "config": {
+    "seeds": [
+      42,
+      123,
+      256
+    ],
+    "cycles": 6,
+    "feedback_per_cycle": 150,
+    "pool_ratio": 0.6,
+    "source_cap": 8000,
+    "sources": [
+      "juliet",
+      "owasp_bench"
+    ],
+    "note": "source neutralis\u00e9e ; seuil choisi sur le train ; source plafonn\u00e9e \u00e0 8000 (sym\u00e9trie) ; courbes moyenn\u00e9es sur 3 graines"
+  },
+  "directions": {
+    "owasp_bench->juliet": {
+      "zero_shot": {
+        "f1": 0.4892,
+        "roc_auc": 0.4683
+      },
+      "upper_bound": {
+        "f1": 0.8855,
+        "roc_auc": 0.9731
+      },
+      "uncertainty": [
+        {
+          "cycle": 0,
+          "n_labels": 0,
+          "f1": 0.4892,
+          "f1_std": 0.046,
+          "roc_auc": 0.4683
+        },
+        {
+          "cycle": 1,
+          "n_labels": 150,
+          "f1": 0.5237,
+          "f1_std": 0.0471,
+          "roc_auc": 0.4814
+        },
+        {
+          "cycle": 2,
+          "n_labels": 300,
+          "f1": 0.4241,
+          "f1_std": 0.0228,
+          "roc_auc": 0.4592
+        },
+        {
+          "cycle": 3,
+          "n_labels": 450,
+          "f1": 0.3487,
+          "f1_std": 0.0976,
+          "roc_auc": 0.4783
+        },
+        {
+          "cycle": 4,
+          "n_labels": 600,
+          "f1": 0.3317,
+          "f1_std": 0.0788,
+          "roc_auc": 0.4988
+        },
+        {
+          "cycle": 5,
+          "n_labels": 750,
+          "f1": 0.2894,
+          "f1_std": 0.0592,
+          "roc_auc": 0.4866
+        },
+        {
+          "cycle": 6,
+          "n_labels": 900,
+          "f1": 0.4275,
+          "f1_std": 0.0028,
+          "roc_auc": 0.5553
+        }
+      ],
+      "random": [
+        {
+          "cycle": 0,
+          "n_labels": 0,
+          "f1": 0.4892,
+          "f1_std": 0.046,
+          "roc_auc": 0.4683
+        },
+        {
+          "cycle": 1,
+          "n_labels": 150,
+          "f1": 0.598,
+          "f1_std": 0.013,
+          "roc_auc": 0.7692
+        },
+        {
+          "cycle": 2,
+          "n_labels": 300,
+          "f1": 0.6532,
+          "f1_std": 0.0218,
+          "roc_auc": 0.8365
+        },
+        {
+          "cycle": 3,
+          "n_labels": 450,
+          "f1": 0.6727,
+          "f1_std": 0.0035,
+          "roc_auc": 0.8784
+        },
+        {
+          "cycle": 4,
+          "n_labels": 600,
+          "f1": 0.6997,
+          "f1_std": 0.013,
+          "roc_auc": 0.8924
+        },
+        {
+          "cycle": 5,
+          "n_labels": 750,
+          "f1": 0.7079,
+          "f1_std": 0.0197,
+          "roc_auc": 0.8848
+        },
+        {
+          "cycle": 6,
+          "n_labels": 900,
+          "f1": 0.7499,
+          "f1_std": 0.0168,
+          "roc_auc": 0.9241
+        }
+      ],
+      "gap": 0.3963,
+      "recovered_uncertainty": -0.1557,
+      "recovered_random": 0.6578,
+      "final_uncertainty_f1": 0.4275,
+      "final_random_f1": 0.7499,
+      "random_beats_uncertainty": true
+    },
+    "juliet->owasp_bench": {
+      "zero_shot": {
+        "f1": 0.2185,
+        "roc_auc": 0.6961
+      },
+      "upper_bound": {
+        "f1": 0.7589,
+        "roc_auc": 0.8552
+      },
+      "uncertainty": [
+        {
+          "cycle": 0,
+          "n_labels": 0,
+          "f1": 0.2185,
+          "f1_std": 0.0555,
+          "roc_auc": 0.6961
+        },
+        {
+          "cycle": 1,
+          "n_labels": 150,
+          "f1": 0.1973,
+          "f1_std": 0.083,
+          "roc_auc": 0.6997
+        },
+        {
+          "cycle": 2,
+          "n_labels": 300,
+          "f1": 0.3041,
+          "f1_std": 0.0196,
+          "roc_auc": 0.6998
+        },
+        {
+          "cycle": 3,
+          "n_labels": 450,
+          "f1": 0.385,
+          "f1_std": 0.0537,
+          "roc_auc": 0.7007
+        },
+        {
+          "cycle": 4,
+          "n_labels": 600,
+          "f1": 0.4629,
+          "f1_std": 0.0217,
+          "roc_auc": 0.6971
+        },
+        {
+          "cycle": 5,
+          "n_labels": 750,
+          "f1": 0.4573,
+          "f1_std": 0.0519,
+          "roc_auc": 0.7118
+        },
+        {
+          "cycle": 6,
+          "n_labels": 900,
+          "f1": 0.4617,
+          "f1_std": 0.0404,
+          "roc_auc": 0.7051
+        }
+      ],
+      "random": [
+        {
+          "cycle": 0,
+          "n_labels": 0,
+          "f1": 0.2185,
+          "f1_std": 0.0555,
+          "roc_auc": 0.6961
+        },
+        {
+          "cycle": 1,
+          "n_labels": 150,
+          "f1": 0.3272,
+          "f1_std": 0.0518,
+          "roc_auc": 0.7221
+        },
+        {
+          "cycle": 2,
+          "n_labels": 300,
+          "f1": 0.3877,
+          "f1_std": 0.0589,
+          "roc_auc": 0.732
+        },
+        {
+          "cycle": 3,
+          "n_labels": 450,
+          "f1": 0.4778,
+          "f1_std": 0.0649,
+          "roc_auc": 0.729
+        },
+        {
+          "cycle": 4,
+          "n_labels": 600,
+          "f1": 0.5375,
+          "f1_std": 0.0164,
+          "roc_auc": 0.7343
+        },
+        {
+          "cycle": 5,
+          "n_labels": 750,
+          "f1": 0.5598,
+          "f1_std": 0.0225,
+          "roc_auc": 0.7196
+        },
+        {
+          "cycle": 6,
+          "n_labels": 900,
+          "f1": 0.5788,
+          "f1_std": 0.046,
+          "roc_auc": 0.7392
+        }
+      ],
+      "gap": 0.5404,
+      "recovered_uncertainty": 0.45,
+      "recovered_random": 0.6667,
+      "final_uncertainty_f1": 0.4617,
+      "final_random_f1": 0.5788,
+      "random_beats_uncertainty": true
+    }
+  }
+}

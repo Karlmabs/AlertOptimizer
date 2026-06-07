@@ -75,6 +75,38 @@ export async function tryReadLodoResults(): Promise<LodoResults | null> {
   return tryReadJson<LodoResults>("lodo_ablation_results.json");
 }
 
+export type ALCurvePoint = { cycle: number; n_labels: number; f1: number; f1_std: number; roc_auc: number };
+
+export type ALCrossDirection = {
+  zero_shot: { f1: number; roc_auc: number };
+  upper_bound: { f1: number; roc_auc: number };
+  uncertainty: ALCurvePoint[];
+  random: ALCurvePoint[];
+  gap: number;
+  recovered_uncertainty: number;
+  recovered_random: number;
+  final_uncertainty_f1: number;
+  final_random_f1: number;
+  random_beats_uncertainty: boolean;
+};
+
+export type ALCrossResults = {
+  config: {
+    seeds: number[];
+    cycles: number;
+    feedback_per_cycle: number;
+    pool_ratio: number;
+    source_cap: number;
+    sources: string[];
+    note: string;
+  };
+  directions: Record<string, ALCrossDirection>;
+};
+
+export async function tryReadALCrossResults(): Promise<ALCrossResults | null> {
+  return tryReadJson<ALCrossResults>("al_cross_dataset_results.json");
+}
+
 async function tryReadJson<T>(filename: string): Promise<T | null> {
   try {
     const p = path.join(process.cwd(), "public", "data", filename);

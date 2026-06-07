@@ -507,6 +507,12 @@ async def run_lodo():
     return EventSourceResponse(_stream_subprocess("lodo_ablation.py"))
 
 
+@app.get("/api/run/al-cross")
+async def run_al_cross():
+    """Active learning cross-dataset (adaptation) — uncertainty vs random, 3 seeds. ~140 s."""
+    return EventSourceResponse(_stream_subprocess("al_cross_dataset.py"))
+
+
 if __name__ == "__main__":
     import uvicorn
 

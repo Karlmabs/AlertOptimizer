@@ -9,6 +9,7 @@ import {
   Layers,
   Play,
   ShieldCheck,
+  TrendingUp,
 } from "lucide-react";
 
 export type NavItem = {
@@ -73,6 +74,13 @@ export const NAV: NavItem[] = [
     short: "Generalization",
     description: "LODO cross-dataset + ablation rule.id — le test qui répond au jury",
     icon: ShieldCheck,
+  },
+  {
+    href: "/al-cross",
+    label: "Adaptation cross-dataset",
+    short: "AL cross",
+    description: "L'apprentissage actif récupère le gap — incertitude vs aléatoire",
+    icon: TrendingUp,
   },
   {
     href: "/compare",
