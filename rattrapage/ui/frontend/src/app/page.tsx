@@ -7,6 +7,8 @@ import {
   ListTree,
   Database,
   Play,
+  ShieldCheck,
+  TrendingUp,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { MetricTile } from "@/components/metric-tile";
@@ -40,6 +42,20 @@ const SHORTCUTS = [
     title: "Labo d'apprentissage actif",
     desc: "Tu joues l'oracle, le modèle se ré-entraîne cycle par cycle",
     tone: "accent",
+  },
+  {
+    href: "/generalization",
+    icon: ShieldCheck,
+    title: "Épreuve de généralisation",
+    desc: "LODO cross-dataset + ablation rule.id · le test qui répond au jury",
+    tone: "info",
+  },
+  {
+    href: "/al-cross",
+    icon: TrendingUp,
+    title: "Adaptation cross-dataset",
+    desc: "L'AL récupère le gap · incertitude vs aléatoire",
+    tone: "warn",
   },
   {
     href: "/dataset",
