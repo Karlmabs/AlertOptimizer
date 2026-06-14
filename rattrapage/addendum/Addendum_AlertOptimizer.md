@@ -314,7 +314,44 @@ Le système est désormais évalué sur un dataset plus de **13 fois plus grand*
 - **Features SARIF métadonnées uniquement** : aucune feature issue de l'analyse du code source (AST, snippet n-grams, taint info). Avec des features de contexte plus riches, l'écart ML vs GROUP BY serait probablement plus important.
 - **AL plafonné** parce que le modèle initial est très bon ; un scénario à pool labellisé plus restreint (par exemple 1 % au lieu de 10 %) montrerait probablement plus d'effet AL.
 
-## 6. Conclusion
+## 6. Analyses complémentaires (au-delà du protocole initial)
+
+Au-delà des huit expérimentations du mémoire, j'ai ajouté trois analyses qui répondent encore plus directement aux critiques du jury et qui caractérisent honnêtement les limites du système. Chacune est rejouable en direct dans l'interface de soutenance.
+
+### 6.1 Généralisation (Leave-One-Dataset-Out) et ablation de `rule.id`
+
+Le protocole précédent mélange OWASP et Juliet puis fait un split aléatoire : train et test partagent donc la distribution. Pour tester la vraie généralisation, j'entraîne sur un dataset et je teste sur l'**autre** (matrice train×test, 3 graines, seuil choisi sur le train, feature `source` neutralisée).
+
+| Train ↓ / Test → | OWASP | Juliet |
+|---|---|---|
+| **OWASP** | 0,766 *(in-distrib)* | 0,493 *(cross)* |
+| **Juliet** | 0,289 *(cross)* | 0,904 *(in-distrib)* |
+
+Moyenne in-distribution F1 = 0,835 ; cross-dataset F1 = 0,391 — soit un **gap ΔF1 = +0,444**. Le transfert zéro-shot est donc faible, ce qui est attendu : les faux positifs SAST sont spécifiques au projet et à l'outil. Ce n'est pas un défaut, mais la motivation directe de l'apprentissage actif (§6.2).
+
+**Ablation de `rule.id`.** En neutralisant entièrement la feature `rule.id` (pooled in-distribution, seuil hors test), le F1 passe de **0,880 à 0,719** et la ROC-AUC de **0,970 à 0,883**. Le modèle conserve donc l'essentiel de son pouvoir discriminant sans `rule.id` : **ce n'est pas une table de correspondance.** Détail révélateur : en cross-dataset, retirer `rule.id` ne dégrade rien (OWASP→Juliet : 0,493 → 0,504), car aucune table de règles n'est transférable — `rule.id` y est du bruit. C'est la réponse expérimentale la plus directe à la critique #2.
+
+### 6.2 Adaptation cross-dataset par apprentissage actif
+
+Puisque le transfert zéro-shot échoue (§6.1), la vraie question devient : combien de labels du nouveau dataset faut-il pour rattraper ? J'entraîne sur un dataset, puis j'annote par cycles quelques alertes du dataset cible (6 cycles × 150 requêtes, 3 graines), en comparant deux stratégies d'acquisition.
+
+| Direction | Zéro-shot | AL incertitude | AL aléatoire | Borne haute (in-distrib) |
+|---|---|---|---|---|
+| Juliet → OWASP | 0,218 | 0,462 (+45 %) | **0,579 (+67 %)** | 0,759 |
+| OWASP → Juliet | 0,489 | 0,427 (−16 %) | **0,750 (+66 %)** | 0,885 |
+
+(Le pourcentage = part du gap zéro-shot → borne-haute récupérée.) Deux enseignements : (a) **l'adaptation fonctionne** — quelques centaines de labels récupèrent ~2/3 de l'écart ; (b) sous changement de distribution, l'échantillonnage par **incertitude** (efficace en distribution) est **battu par l'aléatoire** — un mode de défaite connu de l'AL sous biais de covariables, ici quantifié. Cela nuance H3 : l'AL aide, mais la stratégie d'acquisition dépend du régime.
+
+### 6.3 Significativité statistique de l'écart vs GROUP BY
+
+L'écart « +11,4 pts F1 » du §3.2 est confirmé par deux tests (en NumPy, seuils fixés) :
+
+- **McNemar** (apparié, sur la justesse alerte par alerte) : sur les cas où les deux méthodes divergent, le pipeline a raison **4 368** fois contre **1 101** pour GROUP BY → χ² = 1 950, **p < 0,001**.
+- **Bootstrap** (2 000 ré-échantillonnages du test) : Pipeline F1 = 0,874 [0,869 ; 0,878] vs GROUP BY = 0,760 [0,754 ; 0,766], soit un **écart de +11,4 pts, IC95 % [10,8 ; 11,9]** — l'intervalle exclut zéro.
+
+L'avantage du ML sur GROUP BY n'est donc pas un artefact d'échantillonnage : il est **statistiquement significatif**.
+
+## 7. Conclusion
 
 Cet addendum répond directement aux critiques du jury en re-validant l'intégralité du protocole expérimental du mémoire sur **66 227 alertes labellisées réelles** issues d'OWASP Benchmark Java et de NIST Juliet — soit **13× plus de données** que le dataset synthétique initial, avec des labels traçables à des organismes tiers.
 
@@ -322,9 +359,9 @@ Cet addendum répond directement aux critiques du jury en re-validant l'intégra
 
 | Critique du jury | Statut après re-validation |
 |---|---|
-| Dataset synthétique → circularité | **Validée** par les chiffres : rule.id passe de 82 % à 49 %, plusieurs features émergent ; le modèle ne fonctionne plus comme une table de correspondance |
-| `rule.id` domine | **Partiellement validée** : reste #1 mais à 49 % seulement, et trois autres features portent un signal mesurable |
-| GROUP BY suffirait | **Infirmée à l'échelle réelle** : le ML bat GROUP BY de **+11,4 pts F1** sur 66 k alertes ; mais la critique reste *correcte* sur les règles binaires (où GROUP BY est strictement optimal) |
+| Dataset synthétique → circularité | **Réfutée** : labels indépendants (OWASP/NIST), 66 k alertes réelles ; et le modèle généralise/échoue de façon mesurable (§6.1), pas par construction |
+| `rule.id` domine | **Largement atténuée** : passe de 82 % à 49 %, et l'**ablation complète** (§6.1) montre que le modèle tient sans lui (F1 0,72) — ce n'est pas une table de correspondance |
+| GROUP BY suffirait | **Infirmée et testée** : ML > GROUP BY de **+11,4 pts F1**, écart **significatif** (McNemar p < 0,001 ; IC95 % [10,8 ; 11,9], §6.3). La critique reste *correcte* sur les seules règles binaires |
 
 **Hypothèses :**
 - **H1 (réduction > 50 % + rappel ≥ 85 %) : VALIDÉE** sur réel (69 % / 86 %), alors qu'elle était partielle sur synthétique
@@ -374,7 +411,12 @@ docker run --rm -v "$(pwd)/rattrapage/data/juliet/Java/src:/src:ro" \
 python3 rattrapage/scripts/build_dataset_owasp_enriched.py
 python3 rattrapage/scripts/build_dataset_juliet.py
 python3 rattrapage/scripts/merge_datasets.py
-python3 rattrapage/scripts/full_experiment_real.py
+python3 rattrapage/scripts/full_experiment_real.py   # EXP 1-8 + H1/H2/H3
+
+# 5. Analyses complémentaires (section 6)
+python3 rattrapage/scripts/lodo_ablation.py          # §6.1 généralisation + ablation rule.id
+python3 rattrapage/scripts/al_cross_dataset.py       # §6.2 adaptation cross-dataset
+python3 rattrapage/scripts/significance.py           # §6.3 McNemar + IC bootstrap
 ```
 
 Versions exactes : Python 3.14.4, NumPy 2.4.5, Semgrep OSS 1.162.0, OWASP Benchmark Java v1.2, Juliet Test Suite for Java v1.3.
@@ -389,3 +431,6 @@ Tous dans `rattrapage/results/` :
 - `semgrep_owasp_enriched.sarif.json` — SARIF brut OWASP (3 MB)
 - `semgrep_juliet.sarif.json` — SARIF brut Juliet (72 MB)
 - `full_experiment_results.json` — tous les chiffres des 8 EXP + verdicts
+- `lodo_ablation_results.json` — matrice LODO + ablation rule.id (§6.1)
+- `al_cross_dataset_results.json` — courbes d'adaptation cross-dataset (§6.2)
+- `significance_results.json` — McNemar + IC bootstrap (§6.3)
