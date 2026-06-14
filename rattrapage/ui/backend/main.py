@@ -77,6 +77,9 @@ app.add_middleware(
         "http://localhost:3001",
         "http://localhost:3002",
     ],
+    # Also accept the per-container HTTPS domains OrbStack assigns
+    # (e.g. https://n2w-front.orb.local) so the UI works either way.
+    allow_origin_regex=r"https?://.*\.orb\.local",
     allow_methods=["*"],
     allow_headers=["*"],
 )
