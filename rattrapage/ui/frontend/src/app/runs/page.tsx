@@ -7,21 +7,18 @@ export default function RunsPage() {
     <div className="px-6 md:px-12 lg:px-16 py-8 md:py-12 max-w-7xl mx-auto w-full">
       <PageHeader
         eyebrow="Exécutions complètes"
-        title="Re-jouer les scripts d'expérimentation en direct"
-        intro="Chaque bouton lance un script Python du dossier rattrapage/scripts/ et stream son stdout en SSE. Idéal pour montrer au jury que l'expérimentation tourne réellement."
+        title="Re-jouer mes scripts en direct"
+        intro="Chaque bouton lance un script Python de rattrapage/scripts/ et affiche sa sortie en temps réel. Je peux montrer que l'expérimentation tourne vraiment, là, devant vous."
       />
       <RunsClient />
 
       <Takeaway
         points={[
           <>
-            <strong className="text-(--color-fg)">Aucun chiffre n&apos;est figé dans une slide</strong> : les
-            résultats du mémoire sortent du code, en direct, à la demande.
+            <strong className="text-(--color-fg)">Aucun chiffre n&apos;est figé dans une slide</strong> : tout sort du
+            code, à la demande.
           </>,
-          <>
-            <strong className="text-(--color-fg)">Conclusion :</strong> l&apos;expérimentation est entièrement
-            reproductible — c&apos;est la garantie d&apos;intégrité que le jury attend après la première soutenance.
-          </>,
+          <>C&apos;est ma garantie d&apos;intégrité après la première soutenance : tout est reproductible.</>,
         ]}
       />
     </div>

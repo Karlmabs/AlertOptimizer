@@ -7,7 +7,7 @@ export default function DatasetPage() {
       <PageHeader
         eyebrow="Dataset"
         title="66 227 alertes labellisées par OWASP et NIST"
-        intro="Construit à partir de 49 543 fichiers Java scannés par Semgrep avec 6 rulesets publics. Chaque alerte reçoit son label TP/FP via la jointure avec la table de vérité OWASP (expectedresults-1.2.csv) ou NIST (manifest.xml)."
+        intro="J'ai scanné 49 543 fichiers Java avec Semgrep (6 rulesets publics). Chaque alerte reçoit son label TP/FP par jointure avec la table de vérité OWASP (expectedresults-1.2.csv) ou NIST (manifest.xml)."
       />
 
       <section className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
@@ -41,11 +41,11 @@ export default function DatasetPage() {
       </section>
 
       <section className="mt-10 glass border-gradient rounded-(--radius) p-6 text-sm text-(--color-fg-muted) leading-relaxed">
-        <strong className="text-(--color-fg)">Pourquoi c&apos;est défendable face au jury :</strong> les
-        deux sources sont publiques, leurs labels existaient avant que je commence le mémoire, et
-        n&apos;importe qui peut refaire la jointure. Le script <code className="font-mono text-xs px-1.5 py-0.5 rounded bg-(--color-bg-elevated)">build_dataset_juliet.py</code>{" "}
-        + <code className="font-mono text-xs px-1.5 py-0.5 rounded bg-(--color-bg-elevated)">build_dataset_owasp_enriched.py</code>{" "}
-        produit le fichier <code className="font-mono text-xs">real_dataset_v2.csv</code> en moins de 10 s à partir des SARIF bruts.
+        <strong className="text-(--color-fg)">Pourquoi c&apos;est défendable :</strong> les deux sources sont
+        publiques, leurs labels existaient avant mon mémoire, et n&apos;importe qui peut refaire la jointure.
+        Mes scripts <code className="font-mono text-xs px-1.5 py-0.5 rounded bg-(--color-bg-elevated)">build_dataset_juliet.py</code>{" "}
+        et <code className="font-mono text-xs px-1.5 py-0.5 rounded bg-(--color-bg-elevated)">build_dataset_owasp_enriched.py</code>{" "}
+        régénèrent <code className="font-mono text-xs">real_dataset_v2.csv</code> en moins de 10 s depuis les SARIF bruts.
       </section>
     </div>
   );

@@ -162,18 +162,15 @@ function Results({ data }: { data: LodoResults }) {
           body={
             s.generalizes ? (
               <>
-                L&apos;écart entre évaluation <em>in-distribution</em> ({s.in_distribution_f1.toFixed(3)}) et{" "}
-                <em>cross-dataset</em> ({s.cross_dataset_f1.toFixed(3)}) est faible : le modèle transfère d&apos;un
-                benchmark à l&apos;autre.
+                Même dataset {s.in_distribution_f1.toFixed(3)}, dataset croisé{" "}
+                {s.cross_dataset_f1.toFixed(3)} : l&apos;écart est faible, le modèle transfère bien.
               </>
             ) : (
               <>
-                In-distribution F1={s.in_distribution_f1.toFixed(3)} mais cross-dataset F1=
-                {s.cross_dataset_f1.toFixed(3)}. Le modèle apprend des patterns <strong>spécifiques au benchmark</strong>{" "}
-                et ne transfère pas en zéro-shot. C&apos;est <strong>attendu</strong> : les faux positifs SAST sont
-                connus pour être propres au projet/outil — et c&apos;est précisément la <strong>raison d&apos;être de
-                l&apos;apprentissage actif</strong> (s&apos;adapter avec quelques labels au lieu d&apos;espérer du
-                zéro-shot).
+                Même dataset {s.in_distribution_f1.toFixed(3)}, dataset croisé {s.cross_dataset_f1.toFixed(3)} : en
+                zéro-shot, le modèle ne transfère pas. Et c&apos;est <strong>normal</strong> : les faux positifs SAST
+                sont propres à chaque projet. C&apos;est justement pour ça que j&apos;ai un apprentissage actif —
+                s&apos;adapter avec quelques labels plutôt que d&apos;espérer du zéro-shot.
               </>
             )
           }
@@ -186,12 +183,12 @@ function Results({ data }: { data: LodoResults }) {
           big={`F1 sans rule.id = ${ab.pooled_without_rule.f1.toFixed(3)}`}
           body={
             <>
-              En neutralisant <code>rule.id</code> complètement, le F1 passe de{" "}
+              Je coupe <code>rule.id</code> : le F1 passe de{" "}
               <strong className="text-(--color-fg)">{ab.pooled_with_rule.f1.toFixed(3)}</strong> à{" "}
               <strong className="text-(--color-fg)">{ab.pooled_without_rule.f1.toFixed(3)}</strong> (ROC{" "}
               {ab.pooled_with_rule.roc_auc.toFixed(3)} → {ab.pooled_without_rule.roc_auc.toFixed(3)}).{" "}
               {ab.not_a_lookup_table
-                ? "Le modèle conserve l'essentiel de son pouvoir discriminant via les autres features (occurrenceCount, taint, cluster) — donc ce n'est pas un simple dictionnaire de règles."
+                ? "Le modèle tient grâce aux autres features (occurrenceCount, taint, cluster). Ce n'est donc pas un dictionnaire de règles."
                 : "Le modèle s'écroule sans rule.id."}
             </>
           }

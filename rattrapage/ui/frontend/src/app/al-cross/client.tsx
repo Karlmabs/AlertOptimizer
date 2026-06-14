@@ -141,8 +141,8 @@ function Results({ data }: { data: ALCrossResults }) {
           body={
             <>
               En annotant quelques centaines d&apos;alertes du nouveau dataset, le F1 remonte du zéro-shot vers la
-              borne haute « tout le dataset annoté ». C&apos;est la <strong>justification du composant
-              d&apos;apprentissage actif</strong> : on ne mise pas sur le transfert zéro-shot, on s&apos;adapte.
+              borne haute. C&apos;est ce qui justifie mon apprentissage actif : je ne mise pas sur le zéro-shot, je
+              m&apos;adapte.
             </>
           }
         />
@@ -153,11 +153,10 @@ function Results({ data }: { data: ALCrossResults }) {
           big={anyRandomWins ? "Aléatoire > Incertitude" : "Incertitude ≈ Aléatoire"}
           body={
             <>
-              Contre-intuitif mais robuste sur {data.config.seeds.length} graines : sous changement de distribution,
-              l&apos;échantillonnage par <strong>incertitude</strong> (efficace in-distribution) est{" "}
-              <strong>battu par l&apos;aléatoire</strong>. Quand le modèle est mal calibré sur le domaine cible, les
-              points « les plus incertains » sont du bruit non représentatif — un mode de défaite connu de l&apos;AL
-              sous biais de covariables.
+              Contre-intuitif, mais ça tient sur {data.config.seeds.length} graines : sur un nouveau dataset, choisir
+              les alertes <strong>par incertitude</strong> (ce qui marche d&apos;habitude) fait <strong>moins
+              bien que le hasard</strong>. Quand le modèle est paumé sur le nouveau domaine, ses points « incertains »
+              sont du bruit. C&apos;est un piège connu de l&apos;AL sous changement de distribution.
             </>
           }
         />

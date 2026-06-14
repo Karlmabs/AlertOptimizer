@@ -12,15 +12,15 @@ export default async function GeneralizationPage() {
         title="Le système tient-il hors de son dataset d'entraînement ?"
         intro={
           <>
-            Deux épreuves qui répondent <strong className="text-(--color-fg)">frontalement</strong> au jury.
+            Deux tests qui répondent au jury.
             <br />
-            <strong className="text-(--color-fg)">1 · LODO</strong> (Leave-One-Dataset-Out) — on entraîne sur un
-            dataset et on teste sur l&apos;<em>autre</em>. L&apos;écart entre l&apos;évaluation classique (même
-            dataset) et l&apos;évaluation croisée mesure la vraie capacité de généralisation.
+            <strong className="text-(--color-fg)">1 · LODO</strong> : j&apos;entraîne sur un dataset, je teste sur
+            l&apos;<em>autre</em>. L&apos;écart entre « même dataset » et « dataset croisé », c&apos;est ma vraie
+            capacité à généraliser.
             <br />
-            <strong className="text-(--color-fg)">2 · Ablation sans <code>rule.id</code></strong> — on neutralise
-            complètement la feature <code>rule.id</code>. Si le F1 tient, le modèle n&apos;est pas une simple table
-            de correspondance — réponse directe à la critique #2.
+            <strong className="text-(--color-fg)">2 · Ablation sans <code>rule.id</code></strong> : je coupe
+            complètement la feature <code>rule.id</code>. Si le F1 tient, ce n&apos;est pas une table de
+            correspondance. Réponse directe à la critique #2.
           </>
         }
       />

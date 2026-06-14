@@ -21,24 +21,21 @@ export default async function AlertsPage() {
       <PageHeader
         eyebrow="Explorateur d'alertes"
         title={`${state.test.n.toLocaleString("fr-FR")} alertes du test set · clique pour voir le code Java`}
-        intro="Filtre par règle, catégorie, source, ou par type de prédiction (TP/FP/FN/TN). Le panneau de droite affiche le code Java surligné à la ligne signalée par Semgrep, avec la vérité OWASP/NIST et la prédiction du modèle."
+        intro="Filtrez par règle, catégorie, source ou type de prédiction (TP/FP/FN/TN). À droite, le code Java surligné à la ligne signalée, avec la vérité OWASP/NIST et ma prédiction."
       />
       <AlertsClient />
 
       <Takeaway
         points={[
           <>
-            Chaque prédiction est <strong className="text-(--color-fg)">traçable jusqu&apos;au code Java</strong> et à
-            la vérité OWASP/NIST — aucune boîte noire, le jury peut auditer n&apos;importe quelle décision.
+            Chaque prédiction remonte jusqu&apos;au <strong className="text-(--color-fg)">code Java</strong> et au label
+            OWASP/NIST. Pas de boîte noire : on peut auditer n&apos;importe quelle décision.
           </>,
           <>
-            Les <strong className="text-(--color-fg)">faux négatifs (FN)</strong> — vraies vulnérabilités filtrées à
-            tort — sont inspectables une par une : c&apos;est là que se mesure le vrai risque sécurité du filtrage.
+            Les <strong className="text-(--color-fg)">faux négatifs</strong> (vraies failles que je filtre à tort)
+            s&apos;inspectent un par un. C&apos;est là qu&apos;est le vrai risque.
           </>,
-          <>
-            <strong className="text-(--color-fg)">Conclusion :</strong> le système ne demande pas une confiance
-            aveugle ; il expose chaque alerte, son score et son code, ce qui le rend défendable en production.
-          </>,
+          <>Je ne demande pas qu&apos;on me croie sur parole : tout est sur la table.</>,
         ]}
       />
     </div>

@@ -92,13 +92,12 @@ export default async function Overview() {
       <div className="relative px-6 md:px-12 lg:px-16 py-10 md:py-14 max-w-7xl mx-auto">
         <PageHeader
           eyebrow="Workbench · AlertOptimizer"
-          title="Choisis un atelier dans la barre — chaque section est interactive"
+          title="Mon workbench — tout est jouable en direct"
           intro={
             <>
-              Ce n&apos;est pas une présentation, c&apos;est l&apos;outil avec lequel j&apos;ai bossé.
-              Toutes les visualisations sont jouables : bouge un slider, change un hyperparamètre,
-              clique sur une alerte pour voir son code, joue l&apos;oracle pour ré-entraîner le modèle.
-              Les chiffres affichés ci-dessous sont la configuration par défaut sur le dataset réel.
+              J&apos;ai construit cet outil pour travailler, pas pour faire joli. Vous pouvez tout
+              manipuler : déplacer un seuil, changer un hyperparamètre, ouvrir une alerte pour voir
+              son code. Les chiffres ci-dessous, c&apos;est ma config par défaut sur les données réelles.
             </>
           }
         />
@@ -141,20 +140,20 @@ export default async function Overview() {
           {[
             {
               n: "01",
-              crit: "« Dataset synthétique → le modèle redécouvre des patterns programmés. »",
-              ans: "Ré-évalué sur 66 227 alertes réelles (OWASP Benchmark + NIST Juliet), labellisées par des tiers, pas par moi.",
+              crit: "« Dataset synthétique → le modèle redécouvre ce que tu as programmé. »",
+              ans: "J'ai tout refait sur 66 227 alertes réelles (OWASP + NIST Juliet). Les labels viennent d'eux, pas de moi.",
               proof: "F1 0,801 → 0,874",
             },
             {
               n: "02",
-              crit: "« rule.id à 81,7 % de l'importance = simple table de correspondance. »",
-              ans: "Sur données réelles rule.id tombe à 49,1 %. Sans rule.id du tout, le modèle tient encore (F1 0,72) — atelier Généralisation.",
+              crit: "« rule.id à 81,7 % = une simple table de correspondance. »",
+              ans: "Sur le réel, rule.id tombe à 49 %. Et même sans rule.id, le modèle tient (F1 0,72). Voir l'atelier Généralisation.",
               proof: "81,7 % → 49,1 %",
             },
             {
               n: "03",
               crit: "« Un simple GROUP BY rule_id suffirait. »",
-              ans: "Le pipeline bat GROUP BY de +11,4 pts F1 sur 66 k alertes — atelier Baselines. Le ML s'impose à l'échelle réelle.",
+              ans: "Sur 66 k alertes, mon pipeline bat le GROUP BY de 11 points de F1. À cette échelle, le ML gagne. Voir Baselines.",
               proof: "+11,4 pts F1",
             },
           ].map((c) => (

@@ -21,8 +21,8 @@ export default async function ThresholdPage() {
     <div className="px-6 md:px-12 lg:px-16 py-8 md:py-12 max-w-7xl mx-auto w-full">
       <PageHeader
         eyebrow="Tuner de seuil"
-        title="Bouge le slider, regarde tout se mettre à jour"
-        intro="Toutes les valeurs sont recalculées côté client à partir des 33 115 prédictions du test set — zéro latence. C'est le moment-clé pour montrer au jury le compromis précision/rappel en direct."
+        title="Bouge le seuil, tout se met à jour"
+        intro="Tout est recalculé dans le navigateur à partir des 33 115 prédictions du test, sans latence. C'est le bon endroit pour montrer le compromis précision/rappel en direct."
       />
       <ThresholdClient state={state} />
 
@@ -30,18 +30,16 @@ export default async function ThresholdPage() {
         tone="positive"
         points={[
           <>
-            Au seuil par défaut <strong className="text-(--color-fg)">0,45</strong>, le système coupe{" "}
-            <strong className="text-(--color-fg)">68,5 % du volume d&apos;alertes</strong> tout en conservant{" "}
-            <strong className="text-(--color-fg)">87,6 % des vraies vulnérabilités</strong>.
+            À <strong className="text-(--color-fg)">0,45</strong> : je filtre{" "}
+            <strong className="text-(--color-fg)">68 % des alertes</strong> et je garde{" "}
+            <strong className="text-(--color-fg)">88 % des vraies failles</strong>.
           </>,
           <>
-            Le seuil est <strong className="text-(--color-fg)">le seul curseur de déploiement</strong> : pour un
-            contexte plus prudent, à <strong className="text-(--color-fg)">0,70</strong> le rappel monte à ~96 % (quasi
-            aucune vraie vuln manquée) au prix d&apos;une réduction ramenée à ~54 % — sans ré-entraîner le modèle.
+            Besoin d&apos;être plus prudent ? À <strong className="text-(--color-fg)">0,70</strong> je garde 96 % des
+            failles, mais je ne filtre plus que 54 %. Pas besoin de ré-entraîner : c&apos;est juste le curseur.
           </>,
           <>
-            <strong className="text-(--color-fg)">Conclusion :</strong> l&apos;équipe règle le compromis
-            précision/rappel selon sa tolérance au risque ; le modèle, lui, ne change pas.
+            Le seuil s&apos;ajuste au risque qu&apos;on accepte. Le modèle, lui, ne bouge pas.
           </>,
         ]}
       />
