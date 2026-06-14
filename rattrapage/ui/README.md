@@ -47,14 +47,17 @@ Ouvre **http://localhost:3002**.
 
 Débloqués **après l'étape 7** (le pipeline produit l'état qu'ils consomment) :
 
-| Route | Atelier |
-|---|---|
-| `/threshold` | sweep du seuil de décision (précision/rappel/F1) |
-| `/hyperparams` | heatmaps grid search ε×MinPts et n×depth |
-| `/alerts` | exploration alerte par alerte du pool |
-| `/active-learning` | courbes parfait vs bruité |
+| Route | Atelier | Endpoint « run » |
+|---|---|---|
+| `/threshold` | sweep du seuil de décision (précision/rappel/F1) | — (recalcul client) |
+| `/hyperparams` | ε / MinPts / n / depth, ré-entraînement live | `POST /api/retrain` |
+| `/alerts` | exploration alerte par alerte du pool | `GET /api/alerts` |
+| `/active-learning` | courbes parfait vs bruité | `POST /api/active-learning/step` |
+| `/generalization` | LODO cross-dataset + ablation `rule.id` | `GET /api/run/lodo` |
+| `/al-cross` | adaptation par apprentissage actif (incertitude vs aléatoire) | `GET /api/run/al-cross` |
+| `/significance` | McNemar + IC bootstrap (pipeline vs GROUP BY) | `GET /api/run/significance` |
 
-Avant l'étape 7, ces pages affichent un bandeau « données manquantes » qui renvoie vers le wizard — c'est normal.
+Avant l'étape 7, ces pages affichent un bandeau « données manquantes » qui renvoie vers le wizard — c'est normal. Chaque atelier se termine par un bloc **« Ce qu'il faut retenir »** (conclusion lisible pour le jury).
 
 ## Structure
 

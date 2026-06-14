@@ -42,10 +42,17 @@ pip install -r requirements.txt   # dans le venv du projet (../../../venv)
 | `GET` | `/api/run/experiment` | (SSE) rejoue `full_experiment_real.py` |
 | `GET` | `/api/run/grid-search` | (SSE) rejoue `grid_search.py` |
 | `GET` | `/api/run/merge-datasets` | (SSE) rejoue `merge_datasets.py` |
+| `GET` | `/api/run/lodo` | (SSE) rejoue `lodo_ablation.py` (généralisation + ablation) |
+| `GET` | `/api/run/al-cross` | (SSE) rejoue `al_cross_dataset.py` (adaptation) |
+| `GET` | `/api/run/significance` | (SSE) rejoue `significance.py` (McNemar + bootstrap) |
 
 ## CORS
 
-Ouvert à `http://localhost:3000`, `:3001` et `:3002` (le frontend dev tourne sur **3002**).
+Ouvert à `http://localhost:3000/:3001/:3002` et, par regex, à tout domaine `*.orb.local` (OrbStack). **Pour la démo, ouvrir l'UI sur `http://localhost:3002`** — l'URL HTTPS `*.orb.local` déclenche un blocage mixed-content vers le backend HTTP.
+
+## Variables d'environnement
+
+- `N2W_PYTHON` — interpréteur utilisé pour lancer les scripts (défaut : le venv du projet `../../../venv/bin/python`). Mettre `python3` quand le backend tourne en conteneur.
 
 ## Prérequis système
 

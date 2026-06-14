@@ -46,7 +46,8 @@ rattrapage/
 ├── README.md                  ← vous êtes ici
 ├── addendum/
 │   ├── Addendum_AlertOptimizer.md   ← rapport complet (EXP 1-8 + H1/H2/H3)
-│   └── Slides_outline.md            ← plan de présentation
+│   ├── Slides_outline.md            ← plan de présentation
+│   └── QA_soutenance.md             ← fiche Q&A + ouverture pour la défense
 ├── scripts/                   ← construction du dataset + expériences (NumPy)
 │   ├── build_dataset_owasp_enriched.py
 │   ├── build_dataset_juliet.py
@@ -54,13 +55,24 @@ rattrapage/
 │   ├── merge_datasets.py
 │   ├── full_experiment_real.py      ← EXP 1-8 sur données réelles
 │   ├── grid_search.py               ← grid search DBSCAN + RF
+│   ├── lodo_ablation.py             ← généralisation (LODO) + ablation rule.id
+│   ├── al_cross_dataset.py          ← apprentissage actif cross-dataset
+│   ├── significance.py              ← McNemar + IC bootstrap (pipeline vs GROUP BY)
 │   ├── fast_helpers.py              ← DBSCAN/RF optimisés CPU/RAM
 │   ├── build_per_rule_summary.py
 │   └── cache_workbench_state.py     ← prépare l'état lu par l'UI
-├── results/                   ← SARIF, datasets joints, CSV de résultats
+├── results/                   ← SARIF, datasets joints, CSV + JSON de résultats
 ├── data/                      ← sources OWASP/Juliet (git-ignorées, re-téléchargées)
 └── ui/                        ← wizard de soutenance (voir ../QUICKSTART.md)
 ```
+
+### Analyses complémentaires (au-delà du protocole du mémoire)
+
+- **Généralisation (`lodo_ablation.py`)** — entraîne sur un dataset, teste sur l'autre (LODO), et neutralise `rule.id` pour montrer que le modèle n'est pas une table de correspondance.
+- **Adaptation (`al_cross_dataset.py`)** — l'apprentissage actif récupère le gap cross-dataset ; compare incertitude vs aléatoire.
+- **Significativité (`significance.py`)** — McNemar + IC bootstrap qui confirment l'écart de +11,4 pts F1 vs GROUP BY (p ≪ 0,001).
+
+Chacune est aussi un atelier interactif dans l'UI.
 
 > Les gros artefacts (`data/`, SARIF bruts, CSV de dataset) sont **git-ignorés** car régénérables. Voir `.gitignore` à la racine. Les CSV de résultats légers (`hyperparam_*.csv`, `hyperparam_summary.md`) sont, eux, versionnés.
 
@@ -73,4 +85,7 @@ Pour rejouer une expérience seule en ligne de commande (venv activé à la raci
 ```bash
 python rattrapage/scripts/full_experiment_real.py   # EXP 1-8
 python rattrapage/scripts/grid_search.py            # grid search hyperparams
+python rattrapage/scripts/lodo_ablation.py          # généralisation + ablation rule.id
+python rattrapage/scripts/al_cross_dataset.py       # adaptation cross-dataset (AL)
+python rattrapage/scripts/significance.py           # McNemar + IC bootstrap
 ```

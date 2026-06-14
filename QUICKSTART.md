@@ -62,6 +62,8 @@ Ouvre **http://localhost:3002**.
 
 > Le port **3002** est utilisé pour éviter un conflit fréquent avec d'autres dev servers sur 3000/3001. Si tu changes de port, le frontend reste sur `http://127.0.0.1:8000` pour l'API (configurable via `frontend/.env.local` → `NEXT_PUBLIC_API=`).
 
+> ⚠️ **Ouvre bien `http://localhost:3002`** — pas une URL HTTPS auto-générée (type `*.orb.local` sous OrbStack). Une page HTTPS ne peut pas appeler le backend en HTTP local (blocage *mixed-content*) et le badge afficherait « backend offline ».
+
 ### 4. Suivre le wizard (10 étapes)
 
 Chaque étape t'explique ce qu'elle fait **avant** de lancer, streame sa progression, puis affiche ses résultats et ses paramètres.
@@ -79,7 +81,7 @@ Chaque étape t'explique ce qu'elle fait **avant** de lancer, streame sa progres
 | 9 | Apprentissage actif (5 cycles) | uncertainty sampling, parfait vs bruité |
 | 10 | Verdicts H1 / H2 / H3 | synthèse finale |
 
-Une fois l'étape 7 (Pipeline) terminée, les **4 ateliers d'analyse fine** se débloquent : `/threshold`, `/hyperparams`, `/alerts`, `/active-learning`.
+Une fois l'étape 7 (Pipeline) terminée, les **7 ateliers d'analyse fine** se débloquent : `/threshold`, `/hyperparams`, `/alerts`, `/active-learning`, `/generalization` (LODO + ablation rule.id), `/al-cross` (adaptation cross-dataset), `/significance` (McNemar + bootstrap).
 
 ### Reprise / cache
 
