@@ -6,7 +6,6 @@ import {
   Sliders,
   GaugeCircle,
   Beaker,
-  Layers,
   Play,
   ShieldCheck,
   TrendingUp,
@@ -81,13 +80,6 @@ export const NAV: NavItem[] = [
     short: "AL cross",
     description: "L'apprentissage actif récupère le gap — incertitude vs aléatoire",
     icon: TrendingUp,
-  },
-  {
-    href: "/compare",
-    label: "Comparaison de scénarios",
-    short: "Compare",
-    description: "Sauvegarde et compare plusieurs configurations côte à côte",
-    icon: Layers,
   },
   {
     href: "/runs",

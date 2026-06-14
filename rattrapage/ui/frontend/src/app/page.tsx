@@ -133,6 +133,50 @@ export default async function Overview() {
           </section>
         )}
 
+        {/* Fil rouge — les 3 critiques du jury → les 3 réponses */}
+        <h2 className="text-sm font-mono uppercase tracking-widest text-(--color-fg-subtle) mb-4">
+          Le fil rouge — réponse aux 3 critiques du jury
+        </h2>
+        <div className="grid md:grid-cols-3 gap-4 mb-12">
+          {[
+            {
+              n: "01",
+              crit: "« Dataset synthétique → le modèle redécouvre des patterns programmés. »",
+              ans: "Ré-évalué sur 66 227 alertes réelles (OWASP Benchmark + NIST Juliet), labellisées par des tiers, pas par moi.",
+              proof: "F1 0,801 → 0,874",
+            },
+            {
+              n: "02",
+              crit: "« rule.id à 81,7 % de l'importance = simple table de correspondance. »",
+              ans: "Sur données réelles rule.id tombe à 49,1 %. Sans rule.id du tout, le modèle tient encore (F1 0,72) — atelier Généralisation.",
+              proof: "81,7 % → 49,1 %",
+            },
+            {
+              n: "03",
+              crit: "« Un simple GROUP BY rule_id suffirait. »",
+              ans: "Le pipeline bat GROUP BY de +11,4 pts F1 sur 66 k alertes — atelier Baselines. Le ML s'impose à l'échelle réelle.",
+              proof: "+11,4 pts F1",
+            },
+          ].map((c) => (
+            <div key={c.n} className="glass border-gradient rounded-(--radius) p-5 flex flex-col gap-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-mono text-(--color-fg-subtle)">{c.n}</span>
+                <span className="text-[10px] font-mono uppercase tracking-widest text-(--color-danger)">
+                  Critique
+                </span>
+              </div>
+              <p className="text-xs text-(--color-fg-muted) italic leading-relaxed">{c.crit}</p>
+              <div className="text-[10px] font-mono uppercase tracking-widest text-(--color-accent) mt-1">
+                Réponse
+              </div>
+              <p className="text-sm text-(--color-fg) leading-relaxed">{c.ans}</p>
+              <div className="mt-auto pt-2 text-lg font-semibold tabular-nums text-(--color-accent)">
+                {c.proof}
+              </div>
+            </div>
+          ))}
+        </div>
+
         {/* Shortcut tiles */}
         <h2 className="text-sm font-mono uppercase tracking-widest text-(--color-fg-subtle) mb-4">
           Ateliers
