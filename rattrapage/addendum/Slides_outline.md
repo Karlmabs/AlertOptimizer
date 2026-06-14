@@ -1,5 +1,5 @@
 # Soutenance de rattrapage — AlertOptimizer
-## Outline de slides (16 slides, ~20 min)
+## Outline de slides (19 slides, ~24 min)
 
 Chaque slide : **Titre**, **Contenu visible** (à mettre sur la slide), **Speaker note** (à dire à l'oral, à mémoriser, pas sur la slide).
 
@@ -214,7 +214,52 @@ RF (n_estimators × max_depth, 63 combos en 36s) — sommet du plateau :
 
 ---
 
-## Slide 13 — Verdicts H1, H2, H3
+## Slide 13 — Généralisation : le système hors de son dataset
+
+**Réponse renforcée aux critiques #1 et #2 (LODO + ablation `rule.id`)**
+
+| Train ↓ / Test → | OWASP | Juliet |
+|---|---|---|
+| **OWASP** | 0,766 *(même dataset)* | 0,493 *(croisé)* |
+| **Juliet** | 0,289 *(croisé)* | 0,904 *(même dataset)* |
+
+- Même dataset F1 = 0,835 · dataset croisé F1 = 0,391 → **gap +0,444** (le transfert zéro-shot est faible — *attendu*, les FP SAST sont propres au projet).
+- **Ablation** : sans `rule.id` du tout, F1 = 0,88 → **0,72** (ROC 0,88) → le modèle tient → **ce n'est pas une table de correspondance.**
+
+> *Speaker note* : Slide qui désamorce deux critiques d'un coup. Le gap LODO n'est pas une faiblesse, c'est la motivation de la slide suivante (adaptation). L'ablation est ma réponse la plus directe à « rule.id = table de correspondance » : je le coupe, ça tient.
+
+---
+
+## Slide 14 — Adaptation : l'apprentissage actif rattrape le cross-dataset
+
+**Puisque le zéro-shot échoue, combien de labels pour rattraper ?**
+
+| Direction | Zéro-shot | AL aléatoire | Borne haute |
+|---|---|---|---|
+| Juliet → OWASP | 0,218 | **0,579 (+67 %)** | 0,759 |
+| OWASP → Juliet | 0,489 | **0,750 (+66 %)** | 0,885 |
+
+- Quelques centaines de labels → **~2/3 du gap récupéré**. C'est la raison d'être de l'AL.
+- Résultat secondaire (3 graines) : sous changement de distribution, l'**incertitude est battue par l'aléatoire** — mode de défaite connu de l'AL, ici quantifié.
+
+> *Speaker note* : Transforme la faiblesse de la slide 13 en force. Et j'assume le résultat contre-intuitif (incertitude < aléatoire) : ça montre que j'ai creusé, pas que j'ai un bug. Ça nuance H3 honnêtement.
+
+---
+
+## Slide 15 — Significativité : les +11,4 pts, c'est du solide
+
+**Deux tests sur l'écart Pipeline vs GROUP BY**
+
+- **McNemar** (alerte par alerte) : pipeline a raison **4 368** fois vs **1 101** pour GROUP BY → χ² = 1 950, **p < 0,001**.
+- **Bootstrap** (2 000 ré-échantillonnages) : écart **+11,4 pts F1, IC95 % [10,8 ; 11,9]** → l'intervalle **exclut zéro**.
+
+→ L'avantage du ML n'est pas un artefact d'échantillonnage. Le pipeline corrige **~4×** plus d'erreurs qu'il n'en introduit.
+
+> *Speaker note* : LA slide pour clore la critique #3. On passe de « +11,4 pts » (un chiffre) à « +11,4 pts, p < 0,001, IC qui exclut 0 » (un fait statistique). Si un juré a un profil stats, c'est là qu'on le convainc.
+
+---
+
+## Slide 16 — Verdicts H1, H2, H3
 
 **Bilan complet vs mémoire initial**
 
@@ -229,7 +274,7 @@ RF (n_estimators × max_depth, 63 combos en 36s) — sommet du plateau :
 
 ---
 
-## Slide 14 — Comparaison avec l'état de l'art
+## Slide 17 — Comparaison avec l'état de l'art
 
 **AlertOptimizer (réel) vs littérature**
 
@@ -247,14 +292,15 @@ RF (n_estimators × max_depth, 63 combos en 36s) — sommet du plateau :
 
 ---
 
-## Slide 15 — Limites et travaux futurs
+## Slide 18 — Limites et travaux futurs
 
 **Limites assumées**
 
 - **1 seul outil** (Semgrep) — pas encore SpotBugs/SonarQube/Bandit
 - **1 seul langage** (Java) — Python/JavaScript donneraient d'autres distributions
 - **Features SARIF métadonnées uniquement** — pas d'AST, pas de snippet, pas de taint info
-- **H2 et H3 non validées** — DBSCAN apporte peu, AL plafonne quand le pipeline est déjà très bon
+- **H2 et H3 non validées** — DBSCAN apporte peu ; l'AL plafonne *en distribution* (mais rattrape le cross-dataset, slide 14)
+- **Transfert zéro-shot faible** (slide 13) — assumé : les FP SAST sont propres au projet ; on s'adapte au lieu de transférer
 
 **Travaux futurs naturels**
 
@@ -267,7 +313,7 @@ RF (n_estimators × max_depth, 63 combos en 36s) — sommet du plateau :
 
 ---
 
-## Slide 16 — Conclusion + reproductibilité
+## Slide 19 — Conclusion + reproductibilité
 
 **Apports de la re-validation**
 
@@ -284,7 +330,7 @@ docker run semgrep --sarif ...
 python3 full_experiment_real.py    → 37 secondes
 ```
 
-> *Speaker note* : Conclusion en posture mesurée. Le rattrapage produit des résultats meilleurs que le mémoire initial sur des données beaucoup plus solides. La réflexion critique des slides 12 (H2/H3) et 14 (limites) doit rester présente jusqu'au bout — ne pas sur-vendre. Insister sur la reproductibilité : 37 secondes sur Mac avec multiprocessing, tout est public.
+> *Speaker note* : Conclusion en posture mesurée. Le rattrapage produit des résultats meilleurs que le mémoire initial sur des données beaucoup plus solides. La réflexion critique des slides 16 (verdicts H2/H3) et 18 (limites) doit rester présente jusqu'au bout — ne pas sur-vendre. Insister sur la reproductibilité : tout est public et rejouable en direct.
 
 ---
 
@@ -338,8 +384,9 @@ python3 full_experiment_real.py    → 37 secondes
 | 5–7 | 6, 7 | Baselines (critique #3) + feature importance (critique #2) |
 | 7–10 | 8, 9, 10 | EXP 3-4 (AL) + EXP 5 (FP sens.) + EXP 6 (stabilité) |
 | 10–12 | 11, 12 | EXP 7 (seuils) + validation hyperparamètres |
-| 12–14 | 13, 14 | Verdicts H1-H3 + état de l'art |
-| 14–16 | 15, 16 | Limites + conclusion |
-| 16–20 | — | Marge / Q&A en début |
+| 12–16 | 13, 14, 15 | **Généralisation + adaptation + significativité** (analyses complémentaires) |
+| 16–18 | 16, 17 | Verdicts H1-H3 + état de l'art |
+| 18–20 | 18, 19 | Limites + conclusion |
+| 20–24 | — | Marge / Q&A |
 
 → Garder ~10 min pour le Q&A.

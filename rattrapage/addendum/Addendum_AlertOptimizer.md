@@ -419,7 +419,7 @@ python3 rattrapage/scripts/al_cross_dataset.py       # §6.2 adaptation cross-da
 python3 rattrapage/scripts/significance.py           # §6.3 McNemar + IC bootstrap
 ```
 
-Versions exactes : Python 3.14.4, NumPy 2.4.5, Semgrep OSS 1.162.0, OWASP Benchmark Java v1.2, Juliet Test Suite for Java v1.3.
+Versions exactes : Python 3.14.4, NumPy 2.4.5, Semgrep OSS 1.162.0, OWASP Benchmark Java v1.2, Juliet Test Suite for Java v1.3. *(Le backend de l'interface de soutenance tourne en conteneur sous Python 3.12 ; les résultats sont identiques — code NumPy pur, indépendant de la version mineure de Python.)*
 
 ## Annexe B — Artefacts produits
 
