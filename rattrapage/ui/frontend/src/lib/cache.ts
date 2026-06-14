@@ -107,6 +107,23 @@ export async function tryReadALCrossResults(): Promise<ALCrossResults | null> {
   return tryReadJson<ALCrossResults>("al_cross_dataset_results.json");
 }
 
+export type SignificanceResults = {
+  config: { seed: number; n_test: number; n_bootstrap: number; threshold_pipeline: number; threshold_groupby: number };
+  f1_pipeline: number;
+  f1_groupby: number;
+  gap: number;
+  gap_pts: number;
+  ci_pipeline: [number, number];
+  ci_groupby: [number, number];
+  ci_gap: [number, number];
+  mcnemar: { b: number; c: number; chi2: number; p_value: number };
+  significant: boolean;
+};
+
+export async function tryReadSignificanceResults(): Promise<SignificanceResults | null> {
+  return tryReadJson<SignificanceResults>("significance_results.json");
+}
+
 async function tryReadJson<T>(filename: string): Promise<T | null> {
   try {
     const p = path.join(process.cwd(), "public", "data", filename);

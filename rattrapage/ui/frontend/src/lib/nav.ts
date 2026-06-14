@@ -9,6 +9,7 @@ import {
   Play,
   ShieldCheck,
   TrendingUp,
+  Sigma,
 } from "lucide-react";
 
 export type NavItem = {
@@ -80,6 +81,13 @@ export const NAV: NavItem[] = [
     short: "AL cross",
     description: "L'apprentissage actif récupère le gap — incertitude vs aléatoire",
     icon: TrendingUp,
+  },
+  {
+    href: "/significance",
+    label: "Significativité statistique",
+    short: "Stats",
+    description: "McNemar + IC bootstrap sur l'écart de 11,4 pts vs GROUP BY",
+    icon: Sigma,
   },
   {
     href: "/runs",

@@ -9,6 +9,7 @@ import {
   Play,
   ShieldCheck,
   TrendingUp,
+  Sigma,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { MetricTile } from "@/components/metric-tile";
@@ -56,6 +57,13 @@ const SHORTCUTS = [
     title: "Adaptation cross-dataset",
     desc: "L'AL récupère le gap · incertitude vs aléatoire",
     tone: "warn",
+  },
+  {
+    href: "/significance",
+    icon: Sigma,
+    title: "Significativité statistique",
+    desc: "McNemar + IC bootstrap · +11,4 pts confirmés",
+    tone: "accent",
   },
   {
     href: "/dataset",

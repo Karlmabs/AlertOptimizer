@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { CheckCircle2, Circle, CircleDot, AlertCircle, Loader2, ListTree, GaugeCircle, Sliders, Beaker, ShieldCheck, TrendingUp, RotateCw } from "lucide-react";
+import { CheckCircle2, Circle, CircleDot, AlertCircle, Loader2, ListTree, GaugeCircle, Sliders, Beaker, ShieldCheck, TrendingUp, Sigma, RotateCw } from "lucide-react";
 import { WORKFLOW } from "@/lib/workflow";
 import { getAllStates, subscribe, resetAll, type StepStatus } from "@/lib/workflow-store";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,7 @@ const EXTRA_TOOLS = [
   { href: "/active-learning", label: "Labo d'AL interactif", icon: Beaker, after: 7 },
   { href: "/generalization", label: "Épreuve de généralisation", icon: ShieldCheck, after: 7 },
   { href: "/al-cross", label: "Adaptation cross-dataset", icon: TrendingUp, after: 7 },
+  { href: "/significance", label: "Significativité statistique", icon: Sigma, after: 7 },
 ] as const;
 
 export function NavSidebar() {

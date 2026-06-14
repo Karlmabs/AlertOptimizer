@@ -516,6 +516,12 @@ async def run_al_cross():
     return EventSourceResponse(_stream_subprocess("al_cross_dataset.py"))
 
 
+@app.get("/api/run/significance")
+async def run_significance():
+    """McNemar + bootstrap CI on the Pipeline vs GROUP BY F1 gap. ~120 s."""
+    return EventSourceResponse(_stream_subprocess("significance.py"))
+
+
 if __name__ == "__main__":
     import uvicorn
 
