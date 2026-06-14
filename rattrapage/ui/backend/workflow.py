@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[3] / "rattrapage"
 DATA = ROOT / "data"
 RESULTS = ROOT / "results"
 SCRIPTS = ROOT / "scripts"
-PY = str(Path(__file__).resolve().parents[3] / "venv" / "bin" / "python")
+PY = os.environ.get("N2W_PYTHON") or str(Path(__file__).resolve().parents[3] / "venv" / "bin" / "python")
 UI_DATA = ROOT / "ui" / "frontend" / "public" / "data"
 
 router = APIRouter()
