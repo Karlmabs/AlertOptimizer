@@ -30,6 +30,7 @@ import {
 } from "@/lib/workflow-store";
 import { streamSSE, API, checkBackend } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { Takeaway } from "@/components/takeaway";
 
 const FR = new Intl.NumberFormat("fr-FR");
 
@@ -444,6 +445,13 @@ function WorkflowStepInner({ step }: { step: Step }) {
                 ))}
               </div>
             </div>
+
+            {/* Conclusion — what these numbers mean */}
+            {step.conclusion && (
+              <Takeaway tone="positive" title="Conclusion de l'étape">
+                {step.conclusion}
+              </Takeaway>
+            )}
 
             {/* Parameters used */}
             {step.parameters && step.parameters.length > 0 && (

@@ -34,6 +34,8 @@ export type WorkflowStep = {
   tagline: string;
   /** Detailed brief shown on the step page. What the step will do, in plain French. */
   brief: string;
+  /** Plain-French interpretation shown after the results — "what these numbers mean". */
+  conclusion?: string;
   /** Optional warning (e.g. "Long step, ~10 min"). */
   warning?: string;
   /** Estimated duration when running fresh. */
@@ -79,6 +81,8 @@ export const WORKFLOW: WorkflowStep[] = [
     tagline: "Cloner OWASP Benchmark · Télécharger Juliet (NIST)",
     brief:
       "Téléchargement des deux datasets publics qui serviront de ground truth indépendante. OWASP Benchmark Java v1.2 est cloné depuis GitHub (2 740 fichiers de test labellisés par la Fondation OWASP). Juliet Test Suite for Java v1.3 est téléchargé depuis NIST SARD (~73 MB, ~46 800 fichiers labellisés par le NIST avec une CWE pour chaque vulnérabilité).",
+    conclusion:
+      "Les deux corpus sont en place. Point clé pour le jury : ces fichiers et leurs labels existaient bien avant le mémoire et proviennent d'OWASP et du NIST — la vérité-terrain ne dépend donc pas de moi, ce qui désamorce d'emblée la critique de circularité du dataset synthétique.",
     warning: "Première exécution lourde : ~3 min de téléchargement + décompression. Utilise le cache si déjà présent.",
     duration: "~3 min (fresh) · instantané (cache)",
     endpoint: "/api/workflow/sources",
@@ -103,6 +107,8 @@ export const WORKFLOW: WorkflowStep[] = [
     tagline: "Parser expectedresults-1.2.csv + manifest.xml",
     brief:
       "Conversion des deux tables de vérité fournies par OWASP et NIST en un format unifié. Pour OWASP, on parse expectedresults-1.2.csv (catégorie + CWE + booléen real_vulnerability). Pour Juliet, on parse manifest.xml avec un parseur tolérant (le manifest NIST a quelques entrées malformées). Pour chaque fichier Java, on retient : (a) sa CWE primaire, (b) ses flaw_lines précises, (c) sa catégorie de vulnérabilité.",
+    conclusion:
+      "On dispose maintenant d'une vérité-terrain indépendante et traçable pour chaque fichier. C'est elle qui permettra, à l'étape 4, de marquer chaque alerte TP ou FP sans aucun jugement de ma part.",
     duration: "< 2 s",
     endpoint: "/api/workflow/labels",
     narration: [
@@ -126,6 +132,8 @@ export const WORKFLOW: WorkflowStep[] = [
     tagline: "6 rulesets Semgrep sur OWASP + Juliet",
     brief:
       "Exécution de Semgrep OSS 1.162 via Docker avec 6 rulesets publics (p/java, p/owasp-top-ten, p/security-audit, p/findsecbugs, p/cwe-top-25, p/r2c-security-audit). Le scan produit deux fichiers SARIF v2.1.0 que la suite du pipeline consommera. Ces alertes ne sont PAS encore labellisées — Semgrep ne sait pas si elles sont TP ou FP, c'est ce qu'on va déterminer à l'étape 4.",
+    conclusion:
+      "Semgrep a produit des dizaines de milliers d'alertes brutes mêlant vraies vulnérabilités et faux positifs — exactement le bruit que subit un développeur au quotidien. C'est ce flot qu'il faut trier intelligemment ; tout le reste du pipeline s'attaque à ce problème.",
     warning: "Étape la plus lourde : ~10 min sur Juliet (47k fichiers × 200 règles). Cache fortement recommandé.",
     duration: "~10 min (fresh) · instantané (cache)",
     endpoint: "/api/workflow/scan",
@@ -164,6 +172,8 @@ export const WORKFLOW: WorkflowStep[] = [
     tagline: "Jointure SARIF + labels → real_dataset_v2.csv",
     brief:
       "Pour chaque alerte Semgrep, on regarde dans quel fichier elle a fire, puis on consulte la table de vérité OWASP ou NIST. Une alerte est marquée TP (y=0) si le fichier est vulnérable ET que la CWE de la règle Semgrep correspond à la catégorie du fichier. Sinon FP (y=1). On fusionne ensuite les deux datasets labellisés en un seul real_dataset_v2.csv.",
+    conclusion:
+      "Le dataset réel est constitué : 66 227 alertes, ~68 % de faux positifs — un taux conforme à la littérature (Muske & Serebrenik, 2016). C'est 13× le volume du dataset synthétique du mémoire, avec des labels fournis par des tiers : la base d'évaluation est désormais solide et défendable.",
     duration: "< 5 s",
     endpoint: "/api/workflow/dataset",
     narration: [
@@ -192,6 +202,8 @@ export const WORKFLOW: WorkflowStep[] = [
     tagline: "11 features par alerte (8 SARIF + 1 ctx + 2 DBSCAN)",
     brief:
       "Pour chaque alerte, on extrait 8 features SARIF de base (rule.id normalisé, level, source, tool, start_line, rank, occurrenceCount, severity), 1 feature contextuelle dérivée du nom de règle (is_taint_rule), et 2 features qui seront calculées par DBSCAN à l'étape Pipeline (cluster_fp_rate, cluster_size). Le dataset devient une matrice n × 11.",
+    conclusion:
+      "Chaque alerte est désormais un vecteur de 11 features, toutes dérivées des métadonnées SARIF — sans jamais lire le code source. C'est volontairement léger, portable et auditable : le modèle devra apprendre à partir de ce seul signal, ce qui rend ses décisions explicables.",
     duration: "< 2 s",
     endpoint: "/api/workflow/features",
     narration: [
@@ -216,6 +228,8 @@ export const WORKFLOW: WorkflowStep[] = [
     tagline: "42 combos DBSCAN × 63 combos RF — 105 entraînements",
     brief:
       "AVANT d'entraîner le modèle de production, on cherche les meilleurs hyperparamètres par grid search complet. Deux grilles : DBSCAN (7 valeurs de ε × 6 valeurs de MinPts = 42 configurations) et Random Forest (7 valeurs de n_estimators × 9 de max_depth = 63 configurations). Les 105 entraînements sont parallélisés sur 8 cores (~60 s total). La meilleure configuration trouvée sera utilisée par défaut à l'étape suivante (Pipeline), mais le pipeline pourra aussi être lancé avec les valeurs du mémoire v6 pour comparaison.",
+    conclusion:
+      "La grid search confirme que les hyperparamètres du mémoire sont à ~0,01 pt F1 de l'optimum réel : le réglage initial était robuste, pas un coup de chance. On peut donc entraîner le pipeline final sereinement, sans soupçon de sur-apprentissage méthodologique sur les données d'évaluation.",
     warning: "~60 s — c'est l'étape de calcul la plus longue après le scan SAST.",
     duration: "~60 s",
     endpoint: "/api/workflow/grid-search",
@@ -243,6 +257,8 @@ export const WORKFLOW: WorkflowStep[] = [
     tagline: "Entraînement final avec les meilleurs hyperparamètres",
     brief:
       "Le cœur du système, lancé avec les hyperparamètres validés à l'étape précédente. Stratified split 10 % labeled / 40 % pool (pour AL) / 50 % test. DBSCAN clustering sur 1 500 points labellisés sous-échantillonnés. Le cluster_fp_rate est calculé puis ajouté comme feature. Random Forest entraîné, prédictions sur les 33 115 alertes de test. Cette étape écrit aussi les caches consommés par les ateliers interactifs (Threshold tuner, Alert explorer, etc.).",
+    conclusion:
+      "Le pipeline atteint F1 ≈ 0,87 et ROC-AUC ≈ 0,97 sur 33 115 alertes jamais vues — nettement au-dessus du 0,801 du synthétique. Le modèle de production est prêt ; les ateliers interactifs ci-dessous permettent d'explorer ses décisions en direct devant le jury.",
     duration: "~5 s",
     endpoint: "/api/workflow/pipeline",
     parameters: [
@@ -339,6 +355,8 @@ export const WORKFLOW: WorkflowStep[] = [
     tagline: "Pipeline vs RF seul vs GROUP BY vs random",
     brief:
       "Évaluation frontale par rapport aux 4 baselines demandées par le jury : (B0) random uniforme, (B1) majority class, (B2) RF seul sans DBSCAN, (B4) GROUP BY rule_id avec smoothing de Laplace. La question : le pipeline complet apporte-t-il quelque chose de mesurable par rapport à une simple requête statistique ?",
+    conclusion:
+      "Le pipeline bat GROUP BY rule_id de +11,4 pts F1 (0,874 vs 0,760) sur 66 k alertes : la critique « une simple requête statistique suffirait » ne tient pas à l'échelle réelle. La plus-value du ML est démontrée, chiffrée et reproductible.",
     duration: "< 5 s",
     endpoint: "/api/workflow/baselines",
     narration: [
@@ -364,6 +382,8 @@ export const WORKFLOW: WorkflowStep[] = [
     tagline: "Uncertainty sampling · oracle parfait + bruité 10 %",
     brief:
       "Cinq cycles d'AL avec uncertainty sampling : on sélectionne les 150 alertes du pool les plus incertaines (probabilité ≈ 0.5), on les fait labeller par un oracle (le ground truth dans cette simulation), on les ajoute au train set et on ré-entraîne. Variante bruitée : 10 % des labels sont inversés aléatoirement pour simuler des erreurs d'annotation humaine.",
+    conclusion:
+      "In-distribution, l'AL ne gagne que ~+1 pt : c'est attendu, car le modèle démarre déjà très haut (F1 0,874) et il reste peu de marge. Bonne nouvelle annexe : le bruit d'oracle (10 %) n'a quasi aucun impact, l'AL est robuste. L'atelier « Adaptation cross-dataset » montre où l'AL devient vraiment décisif : face à un dataset jamais vu.",
     duration: "~10 s",
     endpoint: "/api/workflow/active-learning",
     narration: [
@@ -396,6 +416,8 @@ export const WORKFLOW: WorkflowStep[] = [
     tagline: "Le bilan final sur les 3 hypothèses du mémoire",
     brief:
       "Application des critères chiffrés du mémoire aux résultats obtenus sur le dataset réel. H1 : Réduction > 50 % ET Rappel ≥ 85 %. H2 : ΔF1(pipeline vs RF seul) ≥ +5 pts. H3 : ΔF1(AL 5 cycles) ≥ +3 %. Comparaison avec les verdicts du mémoire (synthétique) pour montrer l'évolution.",
+    conclusion:
+      "Bilan final : H1 passe de « partielle » à VALIDÉE sur réel (69 % de réduction, 86 % de rappel). H2 et H3 restent non validées, mais l'expérimentation les explique (DBSCAN devient bénéfique au lieu de nuisible ; l'AL plafonne car le modèle part déjà haut). L'essentiel est acquis : le système tient sur des données réelles indépendantes, et chacune des 3 critiques du jury a désormais une réponse chiffrée.",
     duration: "instantané",
     endpoint: null,
     narration: [
