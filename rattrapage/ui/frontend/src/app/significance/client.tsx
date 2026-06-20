@@ -174,7 +174,7 @@ function Results({ d }: { d: SignificanceResults }) {
         tone={d.significant ? "positive" : "caution"}
         points={[
           <>
-            Le +11,4 pts n&apos;est pas un hasard : son intervalle de confiance{" "}
+            Le +{d.gap_pts} pts n&apos;est pas un hasard : son intervalle de confiance{" "}
             <strong className="text-(--color-fg)">[{(d.ci_gap[0] * 100).toFixed(1)} ; {(d.ci_gap[1] * 100).toFixed(1)}]</strong>{" "}
             ne touche jamais zéro, et McNemar donne p {fmtP(d.mcnemar.p_value)}.
           </>,

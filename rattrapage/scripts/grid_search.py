@@ -34,7 +34,7 @@ from alertoptimizer import (  # noqa: E402
     metrics, roc_auc, pr_auc, find_threshold,
 )
 from fast_helpers import chunked_dbscan, stratified_subsample, patch_random_forest  # noqa: E402
-from full_experiment_real import load_real_v2, stratified_split  # noqa: E402
+from full_experiment_real import load_real_v2, stratified_split, _strat_val_split  # noqa: E402
 
 patch_random_forest()
 
@@ -59,15 +59,19 @@ def prepare_data(seed=SEED):
     lab_idx, _, te_idx = stratified_split(y, seed=seed)
     X_lab, y_lab = X[lab_idx], y[lab_idx]
     X_te, y_te = X[te_idx], y[te_idx]
-    db_idx = stratified_subsample(np.arange(len(lab_idx)), y_lab, DBSCAN_MAX_LABELED, seed=seed)
-    return X_lab, y_lab, X_te, y_te, db_idx
+    # Hold out a stratified validation slice of labeled for threshold + config selection
+    fit_i, val_i = _strat_val_split(y_lab, seed)
+    X_fit, y_fit = X_lab[fit_i], y_lab[fit_i]
+    X_val, y_val = X_lab[val_i], y_lab[val_i]
+    db_idx = stratified_subsample(np.arange(len(fit_i)), y_fit, DBSCAN_MAX_LABELED, seed=seed)
+    return X_fit, y_fit, X_val, y_val, X_te, y_te, db_idx
 
 
 def _dbscan_combo(args):
     eps, min_pts = args
-    X_lab, y_lab, X_te, y_te, db_idx = prepare_data()
-    X_db = X_lab[db_idx][:, [0, 1, 2, 3]]
-    y_db = y_lab[db_idx]
+    X_fit, y_fit, X_val, y_val, X_te, y_te, db_idx = prepare_data()
+    X_db = X_fit[db_idx][:, [0, 1, 2, 3]]
+    y_db = y_fit[db_idx]
 
     t0 = time.time()
     cl_db = chunked_dbscan(X_db, eps=eps, min_pts=min_pts)
@@ -75,17 +79,21 @@ def _dbscan_combo(args):
     noise_pct = float(np.mean(cl_db == -1))
     t_db = time.time() - t0
 
-    cl_lab, _ = assign_test_clusters(X_lab[:, [0, 1, 2, 3]], X_db, cl_db, eps)
+    cl_fit, _ = assign_test_clusters(X_fit[:, [0, 1, 2, 3]], X_db, cl_db, eps)
+    cl_val, _ = assign_test_clusters(X_val[:, [0, 1, 2, 3]], X_db, cl_db, eps)
     cl_te, _ = assign_test_clusters(X_te[:, [0, 1, 2, 3]], X_db, cl_db, eps)
     _, cl_fp_map = enrich_clusters(X_db, cl_db, y_db, n_cl, is_train=True)
-    X_lab_full, _ = enrich_clusters(X_lab, cl_lab, y_lab, n_cl, is_train=False, cl_fp_map=cl_fp_map)
+    X_fit_full, _ = enrich_clusters(X_fit, cl_fit, y_fit, n_cl, is_train=False, cl_fp_map=cl_fp_map)
+    X_val_full, _ = enrich_clusters(X_val, cl_val, y_val, n_cl, is_train=False, cl_fp_map=cl_fp_map)
     X_te_full, _ = enrich_clusters(X_te, cl_te, y_te, n_cl, is_train=False, cl_fp_map=cl_fp_map)
 
     # Fixed RF hyperparameters during DBSCAN sweep (mémoire defaults)
     rf = RandomForest(n_estimators=50, max_depth=14, random_state=SEED)
-    rf.fit(X_lab_full, y_lab)
+    rf.fit(X_fit_full, y_fit)
+    # Threshold + config ranking on validation; final metrics reported on test
+    best_t = find_threshold(y_val, rf.predict_proba(X_val_full), "f1", min_recall=0.85, min_red=0.50)
+    f1_val = metrics(y_val, rf.predict_proba(X_val_full), best_t)["f1"]
     y_prob = rf.predict_proba(X_te_full)
-    best_t = find_threshold(y_te, y_prob, "f1", min_recall=0.85, min_red=0.50)
     m = metrics(y_te, y_prob, best_t)
     out = {
         "eps": eps, "min_pts": min_pts,
@@ -93,6 +101,7 @@ def _dbscan_combo(args):
         "noise_pct": round(noise_pct, 4),
         "dbscan_s": round(t_db, 2),
         "best_threshold": best_t,
+        "f1_val": round(f1_val, 4),
         **{k: round(v, 4) if isinstance(v, float) else v for k, v in m.items()},
         "roc_auc": roc_auc(y_te, y_prob),
         "pr_auc": pr_auc(y_te, y_prob),
@@ -105,30 +114,35 @@ def _dbscan_combo(args):
 
 def _rf_combo(args):
     n_estim, max_depth, best_eps, best_minpts = args
-    X_lab, y_lab, X_te, y_te, db_idx = prepare_data()
-    X_db = X_lab[db_idx][:, [0, 1, 2, 3]]
-    y_db = y_lab[db_idx]
+    X_fit, y_fit, X_val, y_val, X_te, y_te, db_idx = prepare_data()
+    X_db = X_fit[db_idx][:, [0, 1, 2, 3]]
+    y_db = y_fit[db_idx]
 
     cl_db = chunked_dbscan(X_db, eps=best_eps, min_pts=best_minpts)
     n_cl = len(set(cl_db.tolist())) - (1 if -1 in cl_db else 0)
-    cl_lab, _ = assign_test_clusters(X_lab[:, [0, 1, 2, 3]], X_db, cl_db, best_eps)
+    cl_fit, _ = assign_test_clusters(X_fit[:, [0, 1, 2, 3]], X_db, cl_db, best_eps)
+    cl_val, _ = assign_test_clusters(X_val[:, [0, 1, 2, 3]], X_db, cl_db, best_eps)
     cl_te, _ = assign_test_clusters(X_te[:, [0, 1, 2, 3]], X_db, cl_db, best_eps)
     _, cl_fp_map = enrich_clusters(X_db, cl_db, y_db, n_cl, is_train=True)
-    X_lab_full, _ = enrich_clusters(X_lab, cl_lab, y_lab, n_cl, is_train=False, cl_fp_map=cl_fp_map)
+    X_fit_full, _ = enrich_clusters(X_fit, cl_fit, y_fit, n_cl, is_train=False, cl_fp_map=cl_fp_map)
+    X_val_full, _ = enrich_clusters(X_val, cl_val, y_val, n_cl, is_train=False, cl_fp_map=cl_fp_map)
     X_te_full, _ = enrich_clusters(X_te, cl_te, y_te, n_cl, is_train=False, cl_fp_map=cl_fp_map)
 
     t0 = time.time()
     rf = RandomForest(n_estimators=n_estim, max_depth=max_depth, random_state=SEED)
-    rf.fit(X_lab_full, y_lab)
+    rf.fit(X_fit_full, y_fit)
     t_train = time.time() - t0
+    # Threshold + config ranking on validation; final metrics reported on test
+    best_t = find_threshold(y_val, rf.predict_proba(X_val_full), "f1", min_recall=0.85, min_red=0.50)
+    f1_val = metrics(y_val, rf.predict_proba(X_val_full), best_t)["f1"]
     y_prob = rf.predict_proba(X_te_full)
-    best_t = find_threshold(y_te, y_prob, "f1", min_recall=0.85, min_red=0.50)
     m = metrics(y_te, y_prob, best_t)
     out = {
         "n_estimators": n_estim, "max_depth": max_depth,
         "train_s": round(t_train, 2),
         "oob_error": round(float(rf.oob_error), 4) if rf.oob_error else None,
         "best_threshold": best_t,
+        "f1_val": round(f1_val, 4),
         **{k: round(v, 4) if isinstance(v, float) else v for k, v in m.items()},
         "roc_auc": roc_auc(y_te, y_prob),
     }
@@ -160,9 +174,9 @@ def main():
 
     # Find best DBSCAN config (by F1, with tie-break on recall then on cluster count being reasonable)
     def db_score(r):
-        # Prefer higher F1, then higher recall (sécurité), then "reasonable" cluster count (3-50)
+        # Rank on VALIDATION F1 (no test leakage), then recall, then "reasonable" cluster count
         cluster_penalty = 0 if 3 <= r["n_clusters"] <= 60 else -0.001 * abs(r["n_clusters"] - 30)
-        return r["f1"] + 0.0001 * r["recall"] + cluster_penalty
+        return r["f1_val"] + 0.0001 * r["recall"] + cluster_penalty
     best_db = max(db_rows, key=db_score)
     print(f"\n*** Best DBSCAN: eps={best_db['eps']}, min_pts={best_db['min_pts']} "
           f"→ F1={best_db['f1']:.3f}, Réd={best_db['reduction']:.1%}, clusters={best_db['n_clusters']} ***", flush=True)
@@ -185,7 +199,7 @@ def main():
 
     # Best RF (by F1, with tie-break on lower train time when F1 is within 0.002)
     def rf_score(r):
-        return r["f1"] - 0.0001 * r["train_s"]  # tiny penalty for slower
+        return r["f1_val"] - 0.0001 * r["train_s"]  # rank on validation F1, tiny penalty for slower
     best_rf = max(rf_rows, key=rf_score)
     print(f"\n*** Best RF: n_estimators={best_rf['n_estimators']}, max_depth={best_rf['max_depth']} "
           f"→ F1={best_rf['f1']:.3f}, OOB={best_rf['oob_error']}, train={best_rf['train_s']}s ***", flush=True)

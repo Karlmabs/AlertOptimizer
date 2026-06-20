@@ -148,6 +148,23 @@ def stratified_split(y, seed=42, labeled_ratio=0.10, pool_ratio=0.40):
             np.concatenate([te_f, te_t]))
 
 
+def _strat_val_split(y, seed, val_ratio=0.2):
+    """Split labeled indices into (fit, val), stratified on y.
+
+    The decision threshold is chosen on `val` so it never sees the test set.
+    Same convention as the Généralisation/Adaptation workshops (lodo_ablation.py).
+    """
+    rng = np.random.RandomState(seed)
+    fit, val = [], []
+    for cls in (0, 1):
+        idx = np.where(y == cls)[0]
+        rng.shuffle(idx)
+        n_val = max(1, int(val_ratio * len(idx)))
+        val.extend(idx[:n_val].tolist())
+        fit.extend(idx[n_val:].tolist())
+    return np.array(fit), np.array(val)
+
+
 def baseline_groupby_rule(X_lab, y_lab, X_te, rule_col=0, n_rules=None, alpha=1.0, beta=1.0):
     rules_lab = X_lab[:, rule_col]
     rules_te = X_te[:, rule_col]
@@ -176,37 +193,48 @@ def run_pipeline_seed(seed, X, y, n_rules):
     X_lab, y_lab = X[lab_idx], y[lab_idx]
     X_te, y_te = X[te_idx], y[te_idx]
 
-    # --- DBSCAN on a stratified subsample of the labeled set ---
-    db_idx = stratified_subsample(np.arange(len(lab_idx)), y_lab, DBSCAN_MAX_LABELED, seed=seed)
-    X_db = X_lab[db_idx][:, [0, 1, 2, 3]]
-    y_db = y_lab[db_idx]
+    # --- Hold out a stratified validation slice of the labeled set ---
+    # The decision threshold is selected on this slice, never on the test set.
+    fit_i, val_i = _strat_val_split(y_lab, seed)
+    X_fit, y_fit = X_lab[fit_i], y_lab[fit_i]
+    X_val, y_val = X_lab[val_i], y_lab[val_i]
+
+    # --- DBSCAN on a stratified subsample of the FIT set only ---
+    db_idx = stratified_subsample(np.arange(len(fit_i)), y_fit, DBSCAN_MAX_LABELED, seed=seed)
+    X_db = X_fit[db_idx][:, [0, 1, 2, 3]]
+    y_db = y_fit[db_idx]
     t0 = time.time()
     cl_db = chunked_dbscan(X_db, eps=0.25, min_pts=3)
     n_cl = len(set(cl_db.tolist())) - (1 if -1 in cl_db else 0)
     noise_pct = float(np.mean(cl_db == -1))
     t_dbscan = time.time() - t0
 
-    # Assign train + test points to clusters (nearest cluster centroid)
-    cl_lab, _ = assign_test_clusters(X_lab[:, [0, 1, 2, 3]], X_db, cl_db, 0.25)
+    # Assign fit + val + test points to clusters (nearest cluster centroid)
+    cl_fit, _ = assign_test_clusters(X_fit[:, [0, 1, 2, 3]], X_db, cl_db, 0.25)
+    cl_val, _ = assign_test_clusters(X_val[:, [0, 1, 2, 3]], X_db, cl_db, 0.25)
     cl_te, _ = assign_test_clusters(X_te[:, [0, 1, 2, 3]], X_db, cl_db, 0.25)
 
-    # Build cluster_fp_rate from the DBSCAN sub-sample
+    # Build cluster_fp_rate from the DBSCAN sub-sample (fit only)
     _, cl_fp_map = enrich_clusters(X_db, cl_db, y_db, n_cl, is_train=True)
-    X_lab_full, _ = enrich_clusters(X_lab, cl_lab, y_lab, n_cl, is_train=False, cl_fp_map=cl_fp_map)
+    X_fit_full, _ = enrich_clusters(X_fit, cl_fit, y_fit, n_cl, is_train=False, cl_fp_map=cl_fp_map)
+    X_val_full, _ = enrich_clusters(X_val, cl_val, y_val, n_cl, is_train=False, cl_fp_map=cl_fp_map)
     X_te_full, _ = enrich_clusters(X_te, cl_te, y_te, n_cl, is_train=False, cl_fp_map=cl_fp_map)
 
-    # --- RF training on the FULL labeled set ---
+    # --- RF training on the FIT portion of the labeled set ---
     t0 = time.time()
     rf = RandomForest(n_estimators=N_TREES, max_depth=MAX_DEPTH, random_state=seed)
-    rf.fit(X_lab_full, y_lab)
+    rf.fit(X_fit_full, y_fit)
     t_rf = time.time() - t0
     y_prob = rf.predict_proba(X_te_full)
 
-    best_t = find_threshold(y_te, y_prob, "f1", min_recall=0.85, min_red=0.50)
+    # Threshold chosen on the held-out validation slice of TRAIN (no test leakage)
+    p_val = rf.predict_proba(X_val_full)
+    best_t = find_threshold(y_val, p_val, "f1", min_recall=0.85, min_red=0.50)
     m = metrics(y_te, y_prob, best_t)
     return {
         "seed": seed,
-        "n_train_labeled": int(len(y_lab)),
+        "n_train_labeled": int(len(y_fit)),
+        "n_val": int(len(y_val)),
         "n_dbscan_labeled": int(len(db_idx)),
         "n_test": int(len(y_te)),
         "n_clusters": n_cl,
@@ -217,7 +245,8 @@ def run_pipeline_seed(seed, X, y, n_rules):
         "pr_auc": pr_auc(y_te, y_prob),
         "oob_error": float(rf.oob_error) if rf.oob_error else None,
         "timings": {"dbscan_s": round(t_dbscan, 2), "rf_train_s": round(t_rf, 2)},
-        "_X_lab_full": X_lab_full, "_y_lab": y_lab,
+        "_X_lab_full": X_fit_full, "_y_lab": y_fit,
+        "_X_val_full": X_val_full, "_y_val": y_val,
         "_X_te_full": X_te_full, "_y_te": y_te,
         "_X_pool": X[pool_idx], "_y_pool": y[pool_idx],
         "_rf": rf, "_cl_db": cl_db, "_cl_fp_map": cl_fp_map,
@@ -341,6 +370,8 @@ def active_learning_real(r1, cycles=5, feedback=150, noise=0.0, seed=PRIMARY_SEE
 
     X_te = r1["_X_te_full"]
     y_te = r1["_y_te"]
+    X_val = r1["_X_val_full"]
+    y_val = r1["_y_val"]
 
     rf = r1["_rf"]
     y_p = rf.predict_proba(X_te)
@@ -372,7 +403,8 @@ def active_learning_real(r1, cycles=5, feedback=150, noise=0.0, seed=PRIMARY_SEE
         new_rf.fit(X_lab, y_lab)
         rf = new_rf
         y_p = rf.predict_proba(X_te)
-        new_t = find_threshold(y_te, y_p, "f1", min_recall=0.85, min_red=0.50)
+        # Threshold re-tuned on the held-out validation slice, not on test
+        new_t = find_threshold(y_val, rf.predict_proba(X_val), "f1", min_recall=0.85, min_red=0.50)
         m = metrics(y_te, y_p, new_t)
         out.append({
             "cycle": c, "fb": c * feedback, "f1": m["f1"], "prec": m["precision"],
@@ -389,28 +421,35 @@ def active_learning_real(r1, cycles=5, feedback=150, noise=0.0, seed=PRIMARY_SEE
 def baselines_comparison(r1):
     X_lab = r1["_X_lab_full"]
     y_lab = r1["_y_lab"]
+    X_val = r1["_X_val_full"]
+    y_val = r1["_y_val"]
     X_te = r1["_X_te_full"]
     y_te = r1["_y_te"]
     n_rules = None  # let baseline infer
 
+    # All baseline thresholds are selected on the held-out validation slice (no test leakage).
+
     # B2: RF without cluster features
-    X_lab_nc = np.column_stack([X_lab[:, :-2], np.full(len(X_lab), 0.5), np.zeros(len(X_lab))])
-    X_te_nc = np.column_stack([X_te[:, :-2], np.full(len(X_te), 0.5), np.zeros(len(X_te))])
+    def _strip_cluster(Xm):
+        return np.column_stack([Xm[:, :-2], np.full(len(Xm), 0.5), np.zeros(len(Xm))])
+    X_lab_nc = _strip_cluster(X_lab)
+    X_val_nc = _strip_cluster(X_val)
+    X_te_nc = _strip_cluster(X_te)
     rf_nc = RandomForest(n_estimators=N_TREES, max_depth=MAX_DEPTH, random_state=r1["seed"])
     rf_nc.fit(X_lab_nc, y_lab)
+    t_b2 = find_threshold(y_val, rf_nc.predict_proba(X_val_nc), "f1", min_recall=0.85, min_red=0.50)
     y_b2 = rf_nc.predict_proba(X_te_nc)
-    t_b2 = find_threshold(y_te, y_b2, "f1", min_recall=0.85, min_red=0.50)
     m_b2 = metrics(y_te, y_b2, t_b2)
 
     # B4: GROUP BY rule_id
+    t_b4 = find_threshold(y_val, baseline_groupby_rule(X_lab, y_lab, X_val, n_rules=n_rules), "f1")
     y_b4 = baseline_groupby_rule(X_lab, y_lab, X_te, n_rules=n_rules)
-    t_b4 = find_threshold(y_te, y_b4, "f1")
     m_b4 = metrics(y_te, y_b4, t_b4)
 
     # B0 random, B1 majority
     rng = np.random.RandomState(42)
+    t_b0 = find_threshold(y_val, rng.random(len(y_val)), "f1")
     y_b0 = rng.random(len(y_te))
-    t_b0 = find_threshold(y_te, y_b0, "f1")
     m_b0 = metrics(y_te, y_b0, t_b0)
     y_b1 = np.full(len(y_te), float(np.mean(y_lab)))
     m_b1 = metrics(y_te, y_b1, 0.5)

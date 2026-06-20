@@ -11,7 +11,7 @@
 >
 > J'ai pris ces trois critiques au sérieux et j'ai **tout re-testé de zéro sur des données réelles** — 66 227 alertes issues d'OWASP Benchmark et de NIST Juliet, labellisées par ces organismes, pas par moi.
 >
-> Résultat : le F1 passe de 0,801 à 0,874, `rule.id` tombe à 49 %, et mon pipeline bat le GROUP BY de 11 points de F1. Je vais vous montrer ça en direct dans l'outil. »
+> Résultat : le F1 passe de 0,801 à 0,868, `rule.id` tombe à 51 %, et mon pipeline bat le GROUP BY de 11 points de F1. Je vais vous montrer ça en direct dans l'outil. »
 
 ---
 
@@ -31,14 +31,14 @@ Je regarde le fichier où l'alerte a été levée, puis la table de vérité OWA
 
 ## 2. rule.id & « table de correspondance »
 
-**Q — `rule.id` reste votre feature n°1 à 49 %. Le modèle ne reste-t-il pas un dictionnaire de règles ?**
-49 %, c'est moins de la moitié, contre 81,7 % sur le synthétique — la dominance s'effondre. Et surtout, dans l'atelier Généralisation, je **coupe complètement `rule.id`** : le F1 ne tombe qu'à 0,72 (ROC 0,88). Un dictionnaire de règles s'écroulerait ; le mien tient grâce aux autres features. Donc non, ce n'est pas une table de correspondance.
+**Q — `rule.id` reste votre feature n°1 à 51 %. Le modèle ne reste-t-il pas un dictionnaire de règles ?**
+51 %, c'est un peu plus de la moitié, mais contre 81,7 % sur le synthétique — la dominance recule significativement. Et surtout, dans l'atelier Généralisation, je **coupe complètement `rule.id`** : le F1 ne tombe qu'à 0,72 (ROC 0,88). Un dictionnaire de règles s'écroulerait ; le mien tient grâce aux autres features. Donc non, ce n'est pas une table de correspondance.
 
 **Q — Pourquoi `rule.id` compte-t-il encore autant ?**
 Parce que certaines règles sont quasi déterministes : sur le réel, des règles produisent 98 % de FP ou 95 % de TP. Le modèle a raison de s'appuyer dessus — ce serait absurde de l'ignorer. La différence, c'est qu'il combine maintenant `rule.id` avec le contexte (densité d'alertes, taint, cluster), au lieu de ne faire que ça.
 
 **Q — Qu'est-ce que `occurrenceCount` exactement ?**
-C'est le **nombre d'alertes qui partagent le même fichier**, normalisé. Ce n'est pas le champ `occurrenceCount` de SARIF (Semgrep ne le remplit pas) — c'est une densité de co-localisation que je calcule. C'est ma feature n°2 (22,9 %) : un fichier saturé d'alertes est plus souvent une zone de faux positifs.
+C'est le **nombre d'alertes qui partagent le même fichier**, normalisé. Ce n'est pas le champ `occurrenceCount` de SARIF (Semgrep ne le remplit pas) — c'est une densité de co-localisation que je calcule. C'est ma feature n°2 (20,4 %) : un fichier saturé d'alertes est plus souvent une zone de faux positifs.
 
 **Q — Vous avez `level`, `rank` et `severity` : ce ne sont pas trois fois la même chose ?**
 Si, en partie : Semgrep ne remplit que `level`, donc `rank` et `severity` en sont dérivés. Elles sont volontairement gardées pour rester fidèle au gabarit à 8 features du mémoire, mais leur importance est minuscule (0,3 à 0,8 %) — ce qui est cohérent avec leur redondance. Je l'assume comme une limite.
@@ -48,23 +48,23 @@ Si, en partie : Semgrep ne remplit que `level`, donc `rank` et `severity` en son
 ## 3. GROUP BY & plus-value du ML
 
 **Q — Un `GROUP BY rule_id` ne suffit-il vraiment pas ?**
-Sur petit volume, il s'en sortait — c'est pour ça que la critique était juste à l'époque. Mais sur 66 k alertes avec 58 règles, mon pipeline le bat de **+11,4 points de F1** (0,874 vs 0,760). Le GROUP BY plafonne parce qu'il ne voit que la règle ; dès qu'une règle est ambiguë (FP rate entre 30 et 60 %), il est perdu, et c'est là que le ML gagne.
+Sur petit volume, il s'en sortait — c'est pour ça que la critique était juste à l'époque. Mais sur 66 k alertes avec 58 règles, mon pipeline le bat de **+11,2 points de F1** (0,868 vs 0,756). Le GROUP BY plafonne parce qu'il ne voit que la règle ; dès qu'une règle est ambiguë (FP rate entre 30 et 60 %), il est perdu, et c'est là que le ML gagne.
 
 **Q — Où le GROUP BY est-il optimal, alors ?**
-Sur les règles binaires (0 % ou 100 % de FP) : là, le ML n'apporte rien, le GROUP BY est même optimal. Je l'assume — la plus-value du ML est sur les règles intermédiaires, et c'est ce qui fait les +11,4 points à l'échelle réelle.
+Sur les règles binaires (0 % ou 100 % de FP) : là, le ML n'apporte rien, le GROUP BY est même optimal. Je l'assume — la plus-value du ML est sur les règles intermédiaires, et c'est ce qui fait les +11,2 points à l'échelle réelle.
 
 **Q — Cet écart de 11 points est-il significatif statistiquement ?**
-*(Si tu n'as pas encore ajouté le test :)* C'est une valeur ponctuelle, stable sur 5 graines (σ = 0,002 sur le F1). Un test de McNemar serait la prochaine étape pour le formaliser. *(Si tu l'as ajouté :)* Oui : McNemar p < 0,001, IC95 % [X ; Y].
+Oui : McNemar χ² = 2 128, p < 0,001 ; IC95 % de l'écart [10,7 ; 11,8] pts, qui exclut zéro.
 
 ---
 
 ## 4. Méthodologie & rigueur
 
 **Q — Comment évitez-vous les fuites de données entre train et test ?**
-Split stratifié 10 % labeled / 40 % pool / 50 % test, jamais d'alerte partagée. Dans les ateliers Généralisation et Adaptation, je choisis même le **seuil de décision sur le train**, jamais sur le test, pour éviter toute fuite de seuil.
+Le split est stratifié (10 % étiquetées / 40 % pool / 50 % test), sans aucune alerte partagée. Et le seuil de décision est systématiquement choisi sur une tranche de validation interne au train — jamais sur le test — dans TOUTES les expériences, l'expérience principale comme les ateliers de généralisation.
 
 **Q — Vos hyperparamètres ne sont-ils pas sur-ajustés ?**
-Non, et je le prouve : la grid search (105 configurations) montre que mes réglages sont à **0,012 point de F1** de l'optimum trouvé sur le réel. Je n'ai pas ré-optimisé sur les données d'évaluation — c'est la posture conservatrice.
+Non, et je le prouve : la grid search (105 configurations) montre que mes réglages sont à **0,012 point de F1** de l'optimum trouvé sur le réel. La meilleure configuration est sélectionnée sur la tranche de validation, pas sur le test. Je n'ai pas ré-optimisé sur les données d'évaluation — c'est la posture conservatrice.
 
 **Q — Pourquoi DBSCAN et Random Forest, et pas du deep learning ?**
 Trois raisons : interprétabilité (je peux expliquer chaque décision au jury), implémentation NumPy pure (auditable, zéro dépendance), et c'est suffisant — j'atteins ROC-AUC 0,966. Un réseau de neurones serait une boîte noire pour un gain non démontré sur des features de métadonnées.
@@ -77,13 +77,13 @@ Pour l'auditabilité et la sécurité de la chaîne d'approvisionnement : dans u
 ## 5. Hypothèses (surtout les échecs)
 
 **Q — H2 et H3 ne sont pas validées. N'est-ce pas un échec ?**
-C'est un résultat, pas un échec, et je sais l'expliquer. Pour H2, DBSCAN passe de **nuisible** sur le synthétique (−1,6 pt) à **utile** sur le réel (+2,9 pts) — il aide, juste pas des 5 points visés. Pour H3, l'AL ne gagne qu'1 point parce que le modèle démarre déjà à 0,874 : il reste peu de marge in-distribution.
+C'est un résultat, pas un échec, et je sais l'expliquer. Pour H2, DBSCAN passe de **nuisible** sur le synthétique (−1,6 pt) à **utile** sur le réel (+2,3 pts) — il aide, juste pas des 5 points visés. Pour H3, l'AL ne gagne que 0,9 point parce que le modèle démarre déjà à 0,868 : il reste peu de marge in-distribution.
 
 **Q — Si H3 échoue, l'apprentissage actif est-il inutile ?**
 Au contraire. In-distribution il plafonne parce que le modèle est déjà bon. Mais dans l'atelier Adaptation, sur un dataset **jamais vu**, l'AL récupère ~66 % de l'écart — c'est là qu'il est décisif. H3 était mal posée : elle testait l'AL là où il y avait le moins à gagner.
 
 **Q — H1 validée, c'est votre seul vrai succès ?**
-H1 était l'hypothèse principale, et elle passe de partielle à **validée** : 69 % de réduction du volume d'alertes en gardant 86 % des vraies failles. En production, ça veut dire éliminer deux tiers du bruit sans perdre le signal de sécurité. C'est le résultat qui compte le plus.
+H1 était l'hypothèse principale, et elle passe de partielle à **validée** : 67 % de réduction du volume d'alertes en gardant 88 % des vraies failles. En production, ça veut dire éliminer les deux tiers du bruit sans perdre le signal de sécurité. C'est le résultat qui compte le plus.
 
 ---
 
@@ -129,7 +129,7 @@ La rédaction, je l'ai outillée, mais l'expérimentation et le code sont à moi
 Que présenter des résultats sur un dataset que je contrôlais ne prouvait rien. La leçon de fond : un système se juge sur des données indépendantes et sur ce qu'il rate, pas seulement sur ses bons chiffres. Tout mon rattrapage est construit là-dessus.
 
 **Q — Si vous aviez trois mois de plus, que feriez-vous ?**
-Un dataset de code réel (type D2A), un deuxième outil SAST pour valider la promesse multi-outils, et un test de significativité formel sur l'écart ML/GROUP BY. Dans cet ordre.
+Un dataset de code réel (type D2A), un deuxième outil SAST pour valider la promesse multi-outils, et une validation cross-tool des résultats de significativité déjà établis (McNemar + bootstrap). Dans cet ordre.
 
 ---
 
@@ -140,12 +140,12 @@ Un dataset de code réel (type D2A), un deuxième outil SAST pour valider la pro
 | Alertes | 5 000 | **66 227** (OWASP 8 043 + Juliet 58 184) |
 | Règles déclenchées | 32 | **58** |
 | Taux de FP | ~51 % | **67,8 %** |
-| F1 | 0,801 | **0,874** |
+| F1 | 0,801 | **0,868** |
 | ROC-AUC | 0,868 | **0,966** |
-| Réduction / Rappel | 44 % / 86 % | **69 % / 86 %** |
-| `rule.id` (importance) | 81,7 % | **49,1 %** |
-| Stabilité σ(F1), 5 graines | 0,019 | **0,002** |
-| Pipeline vs GROUP BY | — | **+11,4 pts F1** |
+| Réduction / Rappel | 44 % / 86 % | **67 % / 88 %** |
+| `rule.id` (importance) | 81,7 % | **51,2 %** |
+| Stabilité σ(F1), 5 graines | 0,019 | **0,004** |
+| Pipeline vs GROUP BY | — | **+11,2 pts F1** |
 | Sans `rule.id` (ablation) | — | **F1 0,72 / ROC 0,88** |
 | LODO croisé vs in-distrib | — | **0,39 vs 0,84** |
 | AL cross-dataset (gap récupéré) | — | **~66 %** |

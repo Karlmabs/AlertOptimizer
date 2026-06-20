@@ -24,7 +24,7 @@ from alertoptimizer import (  # noqa: E402
     metrics, roc_auc, find_threshold,
 )
 from fast_helpers import chunked_dbscan, stratified_subsample, patch_random_forest  # noqa: E402
-from full_experiment_real import load_real_v2, stratified_split  # noqa: E402
+from full_experiment_real import load_real_v2, stratified_split, _strat_val_split  # noqa: E402
 
 patch_random_forest()
 
@@ -52,30 +52,38 @@ def main():
     X_te, y_te = X[te_idx], y[te_idx]
     X_pool, y_pool = X[pool_idx], y[pool_idx]
 
-    print(f"Split: {len(lab_idx)} lab / {len(pool_idx)} pool / {len(te_idx)} test", flush=True)
+    # Hold out a stratified validation slice of labeled — threshold chosen on it, never on test
+    fit_i, val_i = _strat_val_split(y_lab, SEED)
+    X_fit, y_fit = X_lab[fit_i], y_lab[fit_i]
+    X_val, y_val = X_lab[val_i], y_lab[val_i]
 
-    db_sub_idx = stratified_subsample(np.arange(len(lab_idx)), y_lab, DBSCAN_MAX_LABELED, seed=SEED)
-    X_db = X_lab[db_sub_idx][:, [0, 1, 2, 3]]
-    y_db = y_lab[db_sub_idx]
-    print(f"DBSCAN on {len(db_sub_idx)} sub-sampled labeled points…", flush=True)
+    print(f"Split: {len(lab_idx)} lab ({len(fit_i)} fit / {len(val_i)} val) / "
+          f"{len(pool_idx)} pool / {len(te_idx)} test", flush=True)
+
+    db_sub_idx = stratified_subsample(np.arange(len(fit_i)), y_fit, DBSCAN_MAX_LABELED, seed=SEED)
+    X_db = X_fit[db_sub_idx][:, [0, 1, 2, 3]]
+    y_db = y_fit[db_sub_idx]
+    print(f"DBSCAN on {len(db_sub_idx)} sub-sampled fit points…", flush=True)
     cl_db = chunked_dbscan(X_db, eps=EPS, min_pts=MIN_PTS)
     n_cl = len(set(cl_db.tolist())) - (1 if -1 in cl_db else 0)
-    cl_lab, _ = assign_test_clusters(X_lab[:, [0, 1, 2, 3]], X_db, cl_db, EPS)
+    cl_fit, _ = assign_test_clusters(X_fit[:, [0, 1, 2, 3]], X_db, cl_db, EPS)
+    cl_val, _ = assign_test_clusters(X_val[:, [0, 1, 2, 3]], X_db, cl_db, EPS)
     cl_te, _ = assign_test_clusters(X_te[:, [0, 1, 2, 3]], X_db, cl_db, EPS)
     cl_pool, _ = assign_test_clusters(X_pool[:, [0, 1, 2, 3]], X_db, cl_db, EPS)
     _, cl_fp_map = enrich_clusters(X_db, cl_db, y_db, n_cl, is_train=True)
-    X_lab_full, _ = enrich_clusters(X_lab, cl_lab, y_lab, n_cl, is_train=False, cl_fp_map=cl_fp_map)
+    X_fit_full, _ = enrich_clusters(X_fit, cl_fit, y_fit, n_cl, is_train=False, cl_fp_map=cl_fp_map)
+    X_val_full, _ = enrich_clusters(X_val, cl_val, y_val, n_cl, is_train=False, cl_fp_map=cl_fp_map)
     X_te_full, _ = enrich_clusters(X_te, cl_te, y_te, n_cl, is_train=False, cl_fp_map=cl_fp_map)
     X_pool_full, _ = enrich_clusters(X_pool, cl_pool, y_pool, n_cl, is_train=False, cl_fp_map=cl_fp_map)
 
-    print("Training RF (default v6 params)…", flush=True)
+    print("Training RF (default v6 params, fit set)…", flush=True)
     rf = RandomForest(n_estimators=N_TREES, max_depth=MAX_DEPTH, random_state=SEED)
-    rf.fit(X_lab_full, y_lab)
+    rf.fit(X_fit_full, y_fit)
     y_prob_te = rf.predict_proba(X_te_full)
     y_prob_pool = rf.predict_proba(X_pool_full)
 
-    # Default operating point (F1-optimal under constraints)
-    best_t = find_threshold(y_te, y_prob_te, "f1", min_recall=0.85, min_red=0.50)
+    # Default operating point (F1-optimal under constraints) — chosen on validation, not test
+    best_t = find_threshold(y_val, rf.predict_proba(X_val_full), "f1", min_recall=0.85, min_red=0.50)
     m = metrics(y_te, y_prob_te, best_t)
 
     # ──────────── workbench_state.json ────────────
@@ -96,7 +104,8 @@ def main():
             "y_prob": [round(float(v), 4) for v in y_prob_te.tolist()],
             "indexes": [int(v) for v in te_idx.tolist()],
         },
-        "n_train_labeled": int(len(y_lab)),
+        "n_train_labeled": int(len(y_fit)),
+        "n_val": int(len(y_val)),
         "n_pool": int(len(y_pool)),
         "n_clusters_default": int(n_cl),
     }

@@ -229,7 +229,7 @@ export const WORKFLOW: WorkflowStep[] = [
     brief:
       "Avant d'entraîner le modèle final, je cherche les meilleurs hyperparamètres. Deux grilles : DBSCAN (7 ε × 6 MinPts = 42) et Random Forest (7 n_estimators × 9 max_depth = 63). 105 entraînements en parallèle, ~60 s. Le meilleur réglage sert par défaut à l'étape suivante.",
     conclusion:
-      "La grid search le confirme : mes hyperparamètres sont à 0,01 pt F1 de l'optimum. Je ne les ai pas choisis au hasard, et je ne les ai pas non plus sur-ajustés sur le test.",
+      "La grid search le confirme : mes hyperparamètres sont à 0,012 pt F1 de l'optimum (sélectionné sur la validation, pas sur le test). Je ne les ai pas choisis au hasard, et je ne les ai pas non plus sur-ajustés sur le test.",
     warning: "~60 s — c'est l'étape de calcul la plus longue après le scan SAST.",
     duration: "~60 s",
     endpoint: "/api/workflow/grid-search",
@@ -356,7 +356,7 @@ export const WORKFLOW: WorkflowStep[] = [
     brief:
       "Je compare mon pipeline aux 4 baselines demandées par le jury : random (B0), majority (B1), RF seul sans DBSCAN (B2), et GROUP BY rule_id avec smoothing (B4). La question : est-ce que le pipeline complet bat une simple requête statistique ?",
     conclusion:
-      "Mon pipeline bat le GROUP BY de 11 points de F1 (0,874 vs 0,760) sur 66 k alertes. « Une requête statistique suffirait » : non, pas à cette échelle. Le ML apporte vraiment quelque chose.",
+      "Mon pipeline bat le GROUP BY de 11 points de F1 (0,868 vs 0,756) sur 66 k alertes. « Une requête statistique suffirait » : non, pas à cette échelle. Le ML apporte vraiment quelque chose.",
     duration: "< 5 s",
     endpoint: "/api/workflow/baselines",
     narration: [
@@ -383,7 +383,7 @@ export const WORKFLOW: WorkflowStep[] = [
     brief:
       "5 cycles d'apprentissage actif : à chaque tour je prends les 150 alertes les plus incertaines, je les fais labelliser par un oracle, je les ajoute et je ré-entraîne. Variante bruitée : j'inverse 10 % des labels pour simuler des erreurs humaines.",
     conclusion:
-      "In-distribution, l'AL ne gagne qu'1 point : normal, le modèle part déjà très haut (0,874). Bonne surprise : 10 % de labels faux ne le dérangent presque pas. Là où l'AL devient utile, c'est sur un dataset nouveau — voir l'atelier Adaptation.",
+      "In-distribution, l'AL ne gagne qu'environ 1 point : normal, le modèle part déjà très haut (0,868). Bonne surprise : 10 % de labels faux ne le dérangent presque pas. Là où l'AL devient utile, c'est sur un dataset nouveau — voir l'atelier Adaptation.",
     duration: "~10 s",
     endpoint: "/api/workflow/active-learning",
     narration: [

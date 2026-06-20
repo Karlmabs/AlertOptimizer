@@ -1,0 +1,56 @@
+{
+  "by_source": [
+    {
+      "source": "OWASP seul",
+      "n_alerts": 8043,
+      "n_rules": 34,
+      "fp_rate": 0.5421,
+      "pipeline_f1": 0.7459,
+      "pipeline_f1_std": 0.0083,
+      "pipeline_reduction": 0.3683,
+      "pipeline_recall": 0.8869,
+      "groupby_f1": 0.7422,
+      "groupby_f1_std": 0.0126,
+      "gap_f1": 0.0037,
+      "gap_f1_std": 0.0189,
+      "gap_pts": 0.4
+    },
+    {
+      "source": "Juliet seul",
+      "n_alerts": 58184,
+      "n_rules": 52,
+      "fp_rate": 0.6965,
+      "pipeline_f1": 0.8622,
+      "pipeline_f1_std": 0.0197,
+      "pipeline_reduction": 0.687,
+      "pipeline_recall": 0.8748,
+      "groupby_f1": 0.7787,
+      "groupby_f1_std": 0.0032,
+      "gap_f1": 0.0835,
+      "gap_f1_std": 0.0202,
+      "gap_pts": 8.4
+    },
+    {
+      "source": "Combin\u00e9",
+      "n_alerts": 66227,
+      "n_rules": 58,
+      "fp_rate": 0.6777,
+      "pipeline_f1": 0.8655,
+      "pipeline_f1_std": 0.0036,
+      "pipeline_reduction": 0.6726,
+      "pipeline_recall": 0.8724,
+      "groupby_f1": 0.7598,
+      "groupby_f1_std": 0.0029,
+      "gap_f1": 0.1057,
+      "gap_f1_std": 0.0055,
+      "gap_pts": 10.6
+    }
+  ],
+  "seeds": [
+    42,
+    123,
+    256,
+    512,
+    1024
+  ]
+}

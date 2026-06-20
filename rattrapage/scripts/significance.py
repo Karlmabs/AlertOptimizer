@@ -43,7 +43,7 @@ from alertoptimizer import (  # noqa: E402
 )
 from fast_helpers import chunked_dbscan, stratified_subsample, patch_random_forest  # noqa: E402
 from full_experiment_real import (  # noqa: E402
-    load_real_v2, stratified_split, baseline_groupby_rule,
+    load_real_v2, stratified_split, baseline_groupby_rule, _strat_val_split,
 )
 
 patch_random_forest()
@@ -80,29 +80,38 @@ def main():
     X_lab, y_lab = X[lab_idx], y[lab_idx]
     X_te, y_te = X[te_idx], y[te_idx]
 
+    # Hold out a stratified validation slice of the labeled set (threshold selection, no test leakage)
+    fit_i, val_i = _strat_val_split(y_lab, SEED)
+    X_fit, y_fit = X_lab[fit_i], y_lab[fit_i]
+    X_val, y_val = X_lab[val_i], y_lab[val_i]
+
     # ---- Pipeline (DBSCAN + RF), même protocole qu'EXP1 ----
     log("Entraînement du pipeline (DBSCAN + RF)…")
-    db_idx = stratified_subsample(np.arange(len(lab_idx)), y_lab, DBSCAN_MAX_LABELED, seed=SEED)
-    X_db = X_lab[db_idx][:, [0, 1, 2, 3]]
-    y_db = y_lab[db_idx]
+    db_idx = stratified_subsample(np.arange(len(fit_i)), y_fit, DBSCAN_MAX_LABELED, seed=SEED)
+    X_db = X_fit[db_idx][:, [0, 1, 2, 3]]
+    y_db = y_fit[db_idx]
     cl_db = chunked_dbscan(X_db, eps=EPS, min_pts=MIN_PTS)
     n_cl = len(set(cl_db.tolist())) - (1 if -1 in cl_db else 0)
-    cl_lab, _ = assign_test_clusters(X_lab[:, [0, 1, 2, 3]], X_db, cl_db, EPS)
+    cl_fit, _ = assign_test_clusters(X_fit[:, [0, 1, 2, 3]], X_db, cl_db, EPS)
+    cl_val, _ = assign_test_clusters(X_val[:, [0, 1, 2, 3]], X_db, cl_db, EPS)
     cl_te, _ = assign_test_clusters(X_te[:, [0, 1, 2, 3]], X_db, cl_db, EPS)
     _, cl_fp_map = enrich_clusters(X_db, cl_db, y_db, n_cl, is_train=True)
-    X_lab_f, _ = enrich_clusters(X_lab, cl_lab, y_lab, n_cl, is_train=False, cl_fp_map=cl_fp_map)
+    X_fit_f, _ = enrich_clusters(X_fit, cl_fit, y_fit, n_cl, is_train=False, cl_fp_map=cl_fp_map)
+    X_val_f, _ = enrich_clusters(X_val, cl_val, y_val, n_cl, is_train=False, cl_fp_map=cl_fp_map)
     X_te_f, _ = enrich_clusters(X_te, cl_te, y_te, n_cl, is_train=False, cl_fp_map=cl_fp_map)
     rf = RandomForest(n_estimators=N_TREES, max_depth=MAX_DEPTH, random_state=SEED)
-    rf.fit(X_lab_f, y_lab)
+    rf.fit(X_fit_f, y_fit)
     p_pipe = rf.predict_proba(X_te_f)
+    p_pipe_val = rf.predict_proba(X_val_f)
 
     # ---- GROUP BY rule_id ----
     log("Baseline GROUP BY rule_id…")
-    p_gb = baseline_groupby_rule(X_lab_f, y_lab, X_te_f)
+    p_gb = baseline_groupby_rule(X_fit_f, y_fit, X_te_f)
+    p_gb_val = baseline_groupby_rule(X_fit_f, y_fit, X_val_f)
 
-    # ---- Seuils fixés une fois (comme EXP1) ----
-    t_pipe = find_threshold(y_te, p_pipe, "f1", min_recall=0.85, min_red=0.50)
-    t_gb = find_threshold(y_te, p_gb, "f1")
+    # ---- Seuils fixés une fois sur la validation (jamais sur le test) ----
+    t_pipe = find_threshold(y_val, p_pipe_val, "f1", min_recall=0.85, min_red=0.50)
+    t_gb = find_threshold(y_val, p_gb_val, "f1")
     f1_pipe = f1_at(y_te, p_pipe, t_pipe)
     f1_gb = f1_at(y_te, p_gb, t_gb)
     gap = f1_pipe - f1_gb

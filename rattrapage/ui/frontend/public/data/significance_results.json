@@ -3,29 +3,29 @@
     "seed": 42,
     "n_test": 33115,
     "n_bootstrap": 2000,
-    "threshold_pipeline": 0.44,
-    "threshold_groupby": 0.56
+    "threshold_pipeline": 0.485,
+    "threshold_groupby": 0.68
   },
-  "f1_pipeline": 0.8739,
-  "f1_groupby": 0.7604,
-  "gap": 0.1135,
-  "gap_pts": 11.4,
+  "f1_pipeline": 0.8683,
+  "f1_groupby": 0.7561,
+  "gap": 0.1122,
+  "gap_pts": 11.2,
   "ci_pipeline": [
-    0.8692,
-    0.8785
+    0.8634,
+    0.8729
   ],
   "ci_groupby": [
-    0.7542,
-    0.7663
+    0.75,
+    0.7619
   ],
   "ci_gap": [
-    0.1078,
-    0.1193
+    0.1069,
+    0.1176
   ],
   "mcnemar": {
-    "b": 4368,
-    "c": 1101,
-    "chi2": 1950.4,
+    "b": 4126,
+    "c": 866,
+    "chi2": 2127.62,
     "p_value": 0.0
   },
   "significant": true

@@ -62,7 +62,7 @@ const SHORTCUTS = [
     href: "/significance",
     icon: Sigma,
     title: "Significativité statistique",
-    desc: "McNemar + IC bootstrap · +11,4 pts confirmés",
+    desc: "McNemar + IC bootstrap · +11,2 pts confirmés",
     tone: "accent",
   },
   {
@@ -150,19 +150,19 @@ export default async function Overview() {
               n: "01",
               crit: "« Dataset synthétique → le modèle redécouvre ce que tu as programmé. »",
               ans: "J'ai tout refait sur 66 227 alertes réelles (OWASP + NIST Juliet). Les labels viennent d'eux, pas de moi.",
-              proof: "F1 0,801 → 0,874",
+              proof: "F1 0,801 → 0,868",
             },
             {
               n: "02",
               crit: "« rule.id à 81,7 % = une simple table de correspondance. »",
-              ans: "Sur le réel, rule.id tombe à 49 %. Et même sans rule.id, le modèle tient (F1 0,72). Voir l'atelier Généralisation.",
-              proof: "81,7 % → 49,1 %",
+              ans: "Sur le réel, rule.id tombe à 51 %. Et même sans rule.id, le modèle tient (F1 0,72). Voir l'atelier Généralisation.",
+              proof: "81,7 % → 51,2 %",
             },
             {
               n: "03",
               crit: "« Un simple GROUP BY rule_id suffirait. »",
               ans: "Sur 66 k alertes, mon pipeline bat le GROUP BY de 11 points de F1. À cette échelle, le ML gagne. Voir Baselines.",
-              proof: "+11,4 pts F1",
+              proof: "+11,2 pts F1",
             },
           ].map((c) => (
             <div key={c.n} className="glass border-gradient rounded-(--radius) p-5 flex flex-col gap-2.5">

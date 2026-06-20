@@ -17,10 +17,10 @@ Le projet existe en **deux temps** :
 |---|---|---|
 | **Dataset** | 5 000 alertes synthétiques | **66 227 alertes réelles** (OWASP Benchmark + NIST Juliet, scan Semgrep) |
 | **Labels** | générés par l'auteur | fournis par des tiers (frameworks de test) |
-| **F1-Score** | 0,801 | **0,874** |
+| **F1-Score** | 0,801 | **0,868** |
 | **ROC-AUC** | 0,868 | **0,966** |
-| **Réduction du volume** | 44 % | **69 %** (à 86 % de rappel) |
-| **Importance de `rule.id`** | 81,7 % | **49,1 %** |
+| **Réduction du volume** | 44 % | **67 %** (à 88 % de rappel) |
+| **Importance de `rule.id`** | 81,7 % | **51,2 %** |
 | **H1 (réduction + rappel)** | partielle | **VALIDÉE ✓** |
 
 > 👉 **Les résultats de référence du projet sont ceux du rattrapage** (`rattrapage/`). Le pipeline synthétique décrit plus bas est conservé pour l'historique et la reproductibilité.
@@ -40,8 +40,8 @@ La soutenance initiale a été recalée sur trois critiques du jury :
 Le dossier **[`rattrapage/`](rattrapage/)** répond expérimentalement à chacune, en re-rejouant **l'intégralité du protocole (EXP 1→8 + H1/H2/H3)** sur des données réelles aux labels indépendants. Réponses mesurées :
 
 1. **Données réelles** (OWASP Benchmark Java v1.2 + NIST Juliet v1.3, 66 227 alertes labellisées par les frameworks eux-mêmes).
-2. **`rule.id` tombe à 49,1 %** — le modèle exploite désormais le contexte, pas un dictionnaire de règles.
-3. **Le pipeline bat `GROUP BY rule_id` de +11,4 pts F1** (0,874 vs 0,760) sur 66 k alertes : le ML s'impose sans ambiguïté.
+2. **`rule.id` tombe à 51,2 %** — le modèle exploite désormais le contexte, pas un dictionnaire de règles.
+3. **Le pipeline bat `GROUP BY rule_id` de +11,2 pts F1** (0,868 vs 0,756) sur 66 k alertes : le ML s'impose sans ambiguïté.
 
 Détails complets : **[`rattrapage/addendum/Addendum_AlertOptimizer.md`](rattrapage/addendum/Addendum_AlertOptimizer.md)**.
 
@@ -49,11 +49,11 @@ Détails complets : **[`rattrapage/addendum/Addendum_AlertOptimizer.md`](rattrap
 
 | Hypothèse | Critère | Synthétique | Réel | Verdict |
 |---|---|---|---|---|
-| **H1** | Réduction > 50 % ET rappel ≥ 85 % | 44 % / 86 % | **69 % / 86 %** | **VALIDÉE ✓** |
-| **H2** | ΔF1 apporté par DBSCAN ≥ 5 pts | −1,6 pts | +2,9 pts | NON VALIDÉE ✗ |
-| **H3** | ΔF1 après 5 cycles d'apprentissage actif ≥ 3 % | +3,1 pts | +1,0 pt | NON VALIDÉE ✗ |
+| **H1** | Réduction > 50 % ET rappel ≥ 85 % | 44 % / 86 % | **67 % / 88 %** | **VALIDÉE ✓** |
+| **H2** | ΔF1 apporté par DBSCAN ≥ 5 pts | −1,6 pts | +2,3 pts | NON VALIDÉE ✗ |
+| **H3** | ΔF1 après 5 cycles d'apprentissage actif ≥ 3 % | +3,1 pts | +0,9 pt | NON VALIDÉE ✗ |
 
-> H2 et H3 restent non validées, mais pour des raisons que l'expérimentation éclaire (DBSCAN aide désormais au lieu de nuire ; l'AL plafonne parce que le modèle démarre déjà très haut). Stabilité sur 5 seeds : **σ(F1) = 0,002** sur réel (÷10 vs synthétique).
+> H2 et H3 restent non validées, mais pour des raisons que l'expérimentation éclaire (DBSCAN aide désormais au lieu de nuire ; l'AL plafonne parce que le modèle démarre déjà très haut). Stabilité sur 5 seeds : **σ(F1) = 0,004** sur réel (÷5 vs synthétique).
 
 ---
 

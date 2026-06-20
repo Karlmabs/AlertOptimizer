@@ -16,26 +16,26 @@ Re-validation complète du système sur **données réelles**, en réponse aux t
 
 | Métrique | Synthétique | **Réel** |
 |---|---|---|
-| F1-Score | 0,801 | **0,874** |
+| F1-Score | 0,801 | **0,868** |
 | ROC-AUC | 0,868 | **0,966** |
-| Réduction du volume | 44 % | **69 %** |
-| Rappel (vraies vulns préservées) | 86 % | **86 %** |
-| Importance de `rule.id` | 81,7 % | **49,1 %** |
-| Stabilité σ(F1) sur 5 seeds | 0,019 | **0,002** |
+| Réduction du volume | 44 % | **67 %** |
+| Rappel (vraies vulns préservées) | 86 % | **88 %** |
+| Importance de `rule.id` | 81,7 % | **51,2 %** |
+| Stabilité σ(F1) sur 5 seeds | 0,019 | **0,004** |
 
 ### Réponses aux 3 critiques
 
 1. **Circularité du synthétique** → labels indépendants (OWASP + Juliet).
-2. **`rule.id` = table de correspondance (81,7 %)** → tombe à **49,1 %** ; le modèle exploite le contexte.
-3. **`GROUP BY rule_id` suffirait** → le pipeline le **bat de +11,4 pts F1** (0,874 vs 0,760) sur 66 k alertes.
+2. **`rule.id` = table de correspondance (81,7 %)** → tombe à **51,2 %** ; le modèle exploite le contexte.
+3. **`GROUP BY rule_id` suffirait** → le pipeline le **bat de +11,2 pts F1** (0,868 vs 0,756) sur 66 k alertes.
 
 ### Verdicts
 
 | Hypothèse | Critère | Réel | Verdict |
 |---|---|---|---|
-| **H1** | Réduction > 50 % ET rappel ≥ 85 % | 69 % / 86 % | **VALIDÉE ✓** |
-| **H2** | ΔF1(DBSCAN) ≥ 5 pts | +2,9 pts | NON VALIDÉE ✗ |
-| **H3** | ΔF1(AL, 5 cycles) ≥ 3 % | +1,0 pt | NON VALIDÉE ✗ |
+| **H1** | Réduction > 50 % ET rappel ≥ 85 % | 67 % / 88 % | **VALIDÉE ✓** |
+| **H2** | ΔF1(DBSCAN) ≥ 5 pts | +2,3 pts | NON VALIDÉE ✗ |
+| **H3** | ΔF1(AL, 5 cycles) ≥ 3 % | +0,9 pt | NON VALIDÉE ✗ |
 
 Analyse complète : **[`addendum/Addendum_AlertOptimizer.md`](addendum/Addendum_AlertOptimizer.md)**.
 
@@ -70,7 +70,7 @@ rattrapage/
 
 - **Généralisation (`lodo_ablation.py`)** — entraîne sur un dataset, teste sur l'autre (LODO), et neutralise `rule.id` pour montrer que le modèle n'est pas une table de correspondance.
 - **Adaptation (`al_cross_dataset.py`)** — l'apprentissage actif récupère le gap cross-dataset ; compare incertitude vs aléatoire.
-- **Significativité (`significance.py`)** — McNemar + IC bootstrap qui confirment l'écart de +11,4 pts F1 vs GROUP BY (p ≪ 0,001).
+- **Significativité (`significance.py`)** — McNemar + IC bootstrap qui confirment l'écart de +11,2 pts F1 vs GROUP BY (p ≪ 0,001).
 
 Chacune est aussi un atelier interactif dans l'UI.
 

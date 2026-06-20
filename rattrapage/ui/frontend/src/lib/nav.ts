@@ -86,7 +86,7 @@ export const NAV: NavItem[] = [
     href: "/significance",
     label: "Significativité statistique",
     short: "Stats",
-    description: "McNemar + IC bootstrap sur l'écart de 11,4 pts vs GROUP BY",
+    description: "McNemar + IC bootstrap sur l'écart de 11,2 pts vs GROUP BY",
     icon: Sigma,
   },
   {

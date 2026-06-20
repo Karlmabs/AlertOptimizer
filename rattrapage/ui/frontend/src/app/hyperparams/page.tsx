@@ -37,8 +37,8 @@ export default async function HyperparamsPage() {
         points={[
           <>
             La grid search (105 entraînements) le confirme : mes réglages sont à{" "}
-            <strong className="text-(--color-fg)">0,01 pt F1 de l&apos;optimum</strong>. Pas du hasard, pas du
-            cherry-picking.
+            <strong className="text-(--color-fg)">0,012 pt F1 de l&apos;optimum</strong> (sélectionné sur la
+            validation, pas sur le test). Pas du hasard, pas du cherry-picking.
           </>,
           <>
             Au-delà de 50 arbres, je ne gagne quasi rien (Breiman, 2001), mais le calcul double. Je garde 50.
