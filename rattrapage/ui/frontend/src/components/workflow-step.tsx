@@ -31,6 +31,7 @@ import {
 import { streamSSE, API, checkBackend } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Takeaway } from "@/components/takeaway";
+import { StepVisual } from "@/components/step-visual";
 
 const FR = new Intl.NumberFormat("fr-FR");
 
@@ -318,6 +319,9 @@ function WorkflowStepInner({ step }: { step: Step }) {
                 ))}
               </ol>
             </div>
+
+            {/* Mechanism visual (only for steps that have one) */}
+            <StepVisual slug={step.slug} />
 
             {/* Action */}
             <div className="flex items-center gap-3 flex-wrap">

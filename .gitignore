@@ -37,3 +37,10 @@ rattrapage/results/semgrep*.sarif.json
 rattrapage/results/real_dataset*.csv
 rattrapage/results/juliet_dataset.csv
 rattrapage/results/owasp_dataset.csv
+
+# Rattrapage — large per-alert UI snapshot (regenerable via cache_workbench_state.py)
+rattrapage/ui/frontend/public/data/workbench_alerts.json
+
+# Slides — generated deck (regenerable via addendum/build_slides.py) + Office lock files
+*.pptx
+~$*

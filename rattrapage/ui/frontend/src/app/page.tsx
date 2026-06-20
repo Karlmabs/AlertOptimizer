@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { MetricTile } from "@/components/metric-tile";
+import { PipelineFlow } from "@/components/pipeline-flow";
 import { tryReadWorkbenchState } from "@/lib/cache";
 
 const SHORTCUTS = [
@@ -139,6 +140,11 @@ export default async function Overview() {
             </Link>
           </section>
         )}
+
+        {/* Pipeline schematic — orientation before the details */}
+        <div className="mb-12">
+          <PipelineFlow />
+        </div>
 
         {/* Fil rouge — les 3 critiques du jury → les 3 réponses */}
         <h2 className="text-sm font-mono uppercase tracking-widest text-(--color-fg-subtle) mb-4">
